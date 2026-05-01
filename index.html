@@ -1,752 +1,392 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<meta http-equiv="Feature-Policy" content="camera *; microphone *" />
-<meta http-equiv="Permissions-Policy" content="camera=*, microphone=*" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบถ่ายรูปติดบัตรผู้พิการ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Mitr:wght@300;400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
 
-<style>
-:root{
-  --p50:#fff0f6;--p100:#ffd6e7;--p200:#ffadd2;
-  --p300:#ff85c2;--p400:#f759ab;--p500:#eb2f96;--p600:#c41d7f;
-  --bg:#fff5f9;--card:#fff;--border:#ffd6e7;
-  --sh-sm:0 2px 8px rgba(235,47,150,.10);
-  --sh-md:0 4px 20px rgba(235,47,150,.15);
-  --txt:#3d0026;--mid:#7a3560;--lite:#b57999;
-  --r10:10px;--r18:18px;
-  --ease:all .25s cubic-bezier(.4,0,.2,1);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
-body{
-  font-family:'Sarabun',sans-serif;
-  background:var(--bg);color:var(--txt);min-height:100vh;
-  background-image:
-    radial-gradient(circle at 10% 20%,rgba(255,133,194,.15) 0%,transparent 40%),
-    radial-gradient(circle at 90% 80%,rgba(247,89,171,.12) 0%,transparent 40%);
-}
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f8fafc;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .pink-gradient {
+            background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+        }
+        .panel-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 133.33%; /* 3:4 Aspect Ratio */
+            background: #000;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .video-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #outputCanvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .face-guide {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50%;
+            height: 55%;
+            border: 2px dashed rgba(255, 255, 255, 0.6);
+            border-radius: 50% 50% 45% 45%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .preview-box {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            border-radius: 0.5rem;
+            border: 2px dashed #cbd5e1;
+            overflow: hidden;
+            position: relative;
+        }
+        #imageResult {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            z-index: 2;
+        }
+        .btn-active {
+            outline: 3px solid #ec4899;
+            transform: scale(1.05);
+        }
+        #webcam { display: none; }
 
-/* HEADER */
-.hdr{
-  background:linear-gradient(135deg,#ff85c2,#eb2f96 60%,#c41d7f);
-  color:#fff;padding:14px 16px;
-  display:flex;align-items:center;gap:12px;
-  box-shadow:var(--sh-md);position:sticky;top:0;z-index:100;
-}
-.hdr-icon{
-  width:42px;height:42px;background:rgba(255,255,255,.2);
-  border-radius:12px;display:grid;place-items:center;
-  font-size:20px;border:1px solid rgba(255,255,255,.3);flex-shrink:0;
-}
-.hdr h1{font-family:'Mitr',sans-serif;font-size:16px;font-weight:600;line-height:1.2}
-.hdr p{font-size:11px;opacity:.85;margin-top:2px}
-.hdr-badge{
-  margin-left:auto;background:rgba(255,255,255,.2);
-  border:1px solid rgba(255,255,255,.3);border-radius:20px;
-  padding:4px 10px;font-size:11px;white-space:nowrap;
-}
-
-/* LAYOUT */
-.wrap{max-width:900px;margin:0 auto;padding:16px 12px 60px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:640px){.grid{grid-template-columns:1fr}}
-.full{grid-column:1/-1}
-
-/* CARD */
-.card{
-  background:var(--card);border:1.5px solid var(--border);
-  border-radius:var(--r18);padding:18px;
-  box-shadow:var(--sh-sm);animation:fadeUp .4s ease both;
-}
-.card:nth-child(2){animation-delay:.08s}
-.card:nth-child(3){animation-delay:.16s}
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.card-ttl{
-  font-family:'Mitr',sans-serif;font-size:14px;font-weight:500;
-  color:var(--p600);display:flex;align-items:center;gap:8px;
-  margin-bottom:14px;padding-bottom:10px;border-bottom:1.5px solid var(--p100);
-}
-.card-ttl i{font-size:15px;color:var(--p400)}
-
-/* CAMERA */
-.cam-box{
-  position:relative;width:100%;aspect-ratio:3/4;
-  background:#111827;border-radius:var(--r10);overflow:hidden;
-  border:2px solid var(--border);
-}
-.cam-box video,.cam-box canvas{
-  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-}
-#overlay-cvs{z-index:2}
-
-.guide-ring{
-  position:absolute;top:10%;left:50%;transform:translateX(-50%);
-  width:52%;aspect-ratio:1;
-  border:2.5px dashed rgba(255,255,255,.55);border-radius:50%;
-  z-index:3;pointer-events:none;display:none;
-  animation:pls 2s ease-in-out infinite;
-}
-@keyframes pls{0%,100%{border-color:rgba(255,133,194,.5)}50%{border-color:rgba(255,255,255,.8)}}
-.guide-txt{
-  position:absolute;top:47%;left:50%;transform:translate(-50%,-50%);
-  color:rgba(255,255,255,.7);font-size:11px;text-align:center;
-  z-index:3;pointer-events:none;display:none;line-height:1.5;
-}
-.sbar{
-  position:absolute;bottom:0;left:0;right:0;
-  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
-  color:#fff;font-size:11px;padding:6px 10px;
-  display:flex;align-items:center;gap:6px;z-index:4;
-}
-.sdot{width:7px;height:7px;border-radius:50%;background:#888;flex-shrink:0}
-.sdot.on{background:#52c41a;animation:blink 1.2s ease infinite}
-.sdot.err{background:#ff4d4f}
-.sdot.warn{background:#faad14}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-
-/* PLACEHOLDER */
-.cam-ph{
-  position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:12px;
-  background:#1a1a2e;color:rgba(255,255,255,.75);
-  z-index:5;text-align:center;padding:24px;
-}
-.cam-ph i{font-size:52px;color:var(--p300);opacity:.85}
-.cam-ph p{font-size:13px;line-height:1.7}
-.cam-ph.hidden{display:none}
-
-/* BUTTONS */
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  gap:7px;padding:10px 16px;border-radius:50px;
-  font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;
-  cursor:pointer;border:none;transition:var(--ease);white-space:nowrap;
-  -webkit-tap-highlight-color:transparent;
-}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.btn:not(:disabled):hover{transform:translateY(-2px)}
-.btn:not(:disabled):active{transform:scale(.97)}
-.btn-pink{background:linear-gradient(135deg,#ff85c2,#eb2f96);color:#fff;box-shadow:0 4px 14px rgba(235,47,150,.35)}
-.btn-pink:not(:disabled):hover{box-shadow:0 6px 20px rgba(235,47,150,.5)}
-.btn-gray{background:var(--p50);color:var(--p600);border:1.5px solid var(--border)}
-.btn-gray:not(:disabled):hover{background:var(--p100)}
-.btn-green{background:linear-gradient(135deg,#52c41a,#389e0d);color:#fff;box-shadow:0 4px 14px rgba(82,196,26,.3)}
-.btn-blue{background:linear-gradient(135deg,#40a9ff,#1677ff);color:#fff;box-shadow:0 4px 14px rgba(22,119,255,.3)}
-.btn-red{background:linear-gradient(135deg,#ff7875,#f5222d);color:#fff}
-.bgrp{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.bgrp .btn{flex:1;min-width:110px}
-
-/* SLIDERS */
-.sec-lbl{font-size:12px;font-weight:600;color:var(--lite);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-.ctrl{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.ctrl label{font-size:13px;color:var(--mid);min-width:76px;font-weight:500}
-.ctrl input[type=range]{
-  flex:1;-webkit-appearance:none;height:5px;border-radius:10px;
-  outline:none;cursor:pointer;
-  background:linear-gradient(90deg,var(--p400) var(--pct,50%),var(--border) var(--pct,50%));
-}
-.ctrl input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
-  background:var(--p500);box-shadow:0 2px 8px rgba(235,47,150,.4);
-  border:2px solid #fff;cursor:pointer;
-}
-.vb{
-  background:var(--p100);color:var(--p600);border-radius:8px;
-  padding:2px 8px;font-size:12px;font-weight:600;min-width:40px;text-align:center;
-}
-
-/* COLOR CHIPS */
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.chip{
-  display:flex;align-items:center;gap:6px;padding:7px 13px;
-  border-radius:50px;border:2px solid transparent;cursor:pointer;
-  font-size:13px;font-weight:500;transition:var(--ease);
-  background:var(--p50);color:var(--txt);
-  -webkit-tap-highlight-color:transparent;
-}
-.chip input{display:none}
-.chip .dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(0,0,0,.1)}
-.chip.active{border-color:var(--p400);background:var(--p100);box-shadow:var(--sh-sm)}
-.dn{background:#003087}.sk{background:#0099dd}.pk{background:#ff69b4}
-
-/* SELECT */
-.sel{
-  width:100%;padding:9px 36px 9px 12px;border-radius:var(--r10);
-  border:1.5px solid var(--border);background:var(--p50);
-  color:var(--txt);font-family:'Sarabun',sans-serif;font-size:13px;
-  cursor:pointer;outline:none;appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23eb2f96' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 10px center;
-}
-.sel:focus{border-color:var(--p400);box-shadow:0 0 0 3px rgba(235,47,150,.12)}
-
-/* TIP */
-.tip{
-  background:linear-gradient(135deg,#fff0f6,#ffd6e7);
-  border:1.5px solid var(--p200);border-radius:var(--r10);
-  padding:12px 14px;font-size:12px;color:var(--mid);
-  line-height:1.75;margin-top:14px;
-}
-.tip strong{color:var(--p600)}
-
-/* RESULT */
-#res-sec{display:none}
-#res-sec.on{display:block}
-.photo-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
-.photo-box{
-  position:relative;display:inline-block;
-  border-radius:var(--r10);overflow:hidden;
-  box-shadow:var(--sh-md);border:3px solid var(--border);
-}
-.photo-box img{display:block;width:100%;height:100%;object-fit:cover}
-.photo-lbl{
-  position:absolute;bottom:0;left:0;right:0;
-  background:rgba(0,0,0,.55);color:#fff;font-size:11px;text-align:center;padding:4px;
-}
-.sheet{
-  display:none;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
-  gap:6px;padding:12px;background:#fff;
-  border:1.5px dashed var(--border);border-radius:var(--r10);margin-top:10px;
-}
-.sheet.on{display:grid}
-.sheet img{width:100%;border:1px solid #ddd;display:block}
-
-/* PROGRESS */
-.prog-wrap{display:none;margin-top:10px}
-.prog-wrap.on{display:block}
-.prog-top{font-size:12px;color:var(--mid);display:flex;justify-content:space-between;margin-bottom:4px}
-.prog-track{height:7px;background:var(--p100);border-radius:10px;overflow:hidden}
-.prog-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,#ff85c2,#eb2f96);width:0%;transition:width .3s ease}
-
-/* OVERLAY */
-#proc-ov{
-  display:none;position:fixed;inset:0;
-  background:rgba(255,255,255,.88);backdrop-filter:blur(8px);
-  z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;
-}
-#proc-ov.on{display:flex}
-.spin{width:56px;height:56px;border:5px solid var(--p100);border-top-color:var(--p500);border-radius:50%;animation:sp .9s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
-#proc-ov p{font-family:'Mitr',sans-serif;font-size:15px;color:var(--p600)}
-
-#dbg{
-  background:#0f172a;color:#86efac;font-size:10.5px;font-family:monospace;
-  padding:10px 12px;border-radius:8px;margin-top:8px;max-height:130px;
-  overflow-y:auto;display:none;line-height:1.6;
-}
-#dbg.on{display:block}
-
-/* SweetAlert */
-.swal2-popup{font-family:'Sarabun',sans-serif !important;border-radius:20px !important}
-.swal2-title{color:var(--txt) !important;font-family:'Mitr',sans-serif !important}
-.swal2-confirm{background:linear-gradient(135deg,#ff85c2,#eb2f96) !important;border-radius:50px !important}
-.swal2-cancel{border-radius:50px !important}
-::-webkit-scrollbar{width:5px}
-::-webkit-scrollbar-thumb{background:var(--p200);border-radius:10px}
-</style>
+        /* Flash Effect */
+        .flash {
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            z-index: 20;
+            pointer-events: none;
+        }
+        .flash-active {
+            animation: flashAnim 0.3s ease-out;
+        }
+        @keyframes flashAnim {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
 </head>
-<body>
-
-<header class="hdr">
-  <div class="hdr-icon">📷</div>
-  <div>
-    <h1>ระบบถ่ายรูปติดบัตรคนพิการ</h1>
-    <p>ถ่ายรูป · ลบพื้นหลังอัตโนมัติ · ดาวน์โหลดฟรี</p>
-  </div>
-  <span class="hdr-badge">♿ ฟรี</span>
-</header>
-
-<div id="proc-ov">
-  <div class="spin"></div>
-  <p id="proc-txt">กำลังประมวลผล...</p>
-</div>
-
-<div class="wrap"><div class="grid">
-
-<div class="card">
-  <div class="card-ttl"><i class="fa-solid fa-camera"></i>กล้อง Webcam</div>
-
-  <div class="cam-box" id="cam-box">
-    <video id="vid" autoplay playsinline muted webkit-playsinline x5-playsinline></video>
-    <canvas id="overlay-cvs"></canvas>
-
-    <div class="cam-ph" id="cam-ph">
-      <i class="fa-solid fa-camera"></i>
-      <p>กดปุ่ม <strong style="color:var(--p300)">เปิดกล้อง</strong> ด้านล่าง<br>
-      แล้วกด <strong>"อนุญาต"</strong> เมื่อเบราว์เซอร์ถาม<br>
-      <span style="font-size:11px;opacity:.65">(Chrome / Safari รองรับ)</span></p>
-    </div>
-
-    <div class="guide-ring" id="g-ring"></div>
-    <div class="guide-txt"  id="g-txt">จัดใบหน้า<br>ในวงกลม</div>
-
-    <div class="sbar">
-      <span class="sdot" id="sdot"></span>
-      <span id="stxt">รอเปิดกล้อง...</span>
-    </div>
-  </div>
-
-  <div id="dbg"></div>
-
-  <div class="bgrp" style="margin-top:10px">
-    <button class="btn btn-gray" id="btn-dbg" style="flex:0 0 auto;padding:6px 12px;font-size:11px">
-      🐛 Debug
-    </button>
-  </div>
-
-  <div class="bgrp">
-    <button class="btn btn-pink" id="btn-open">
-      <i class="fa-solid fa-video"></i> เปิดกล้อง
-    </button>
-    <button class="btn btn-pink" id="btn-cap" disabled>
-      <i class="fa-solid fa-camera-retro"></i> ถ่ายรูป
-    </button>
-    <button class="btn btn-gray" id="btn-sw" disabled>
-      <i class="fa-solid fa-rotate"></i> สลับกล้อง
-    </button>
-    <button class="btn btn-red" id="btn-stop">
-      <i class="fa-solid fa-stop"></i> หยุด
-    </button>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-ttl"><i class="fa-solid fa-sliders"></i>การตั้งค่า</div>
-
-  <div class="sec-lbl">🌟 ความสว่าง (Brightness)</div>
-  <div class="ctrl">
-    <label>สว่าง</label>
-    <input type="range" id="sl-b" min="50" max="200" value="100" oninput="updF()">
-    <span class="vb" id="vb-b">100%</span>
-  </div>
-
-  <div class="sec-lbl" style="margin-top:8px">🎨 ความคมชัด (Contrast)</div>
-  <div class="ctrl">
-    <label>คมชัด</label>
-    <input type="range" id="sl-c" min="50" max="200" value="100" oninput="updF()">
-    <span class="vb" id="vb-c">100%</span>
-  </div>
-
-  <div class="sec-lbl" style="margin-top:12px">🎨 สีพื้นหลัง</div>
-  <div class="chips" id="chips">
-    <label class="chip active"><input type="radio" name="bg" value="#003087" checked><span class="dot dn"></span>น้ำเงิน</label>
-    <label class="chip"><input type="radio" name="bg" value="#0099dd"><span class="dot sk"></span>ฟ้า</label>
-    <label class="chip"><input type="radio" name="bg" value="#ff69b4"><span class="dot pk"></span>ชมพู</label>
-  </div>
-
-  <div class="sec-lbl" style="margin-top:12px">📐 ขนาดรูปติดบัตร</div>
-  <select class="sel" id="sz-sel">
-    <option value="1" selected>1 นิ้ว  (2.5 × 3.0 ซม.)</option>
-    <option value="1.5">1.5 นิ้ว (3.8 × 4.5 ซม.)</option>
-    <option value="2">2 นิ้ว  (5.0 × 6.0 ซม.)</option>
-    <option value="2.5">2.5 นิ้ว (6.5 × 7.5 ซม.)</option>
-    <option value="3">3 นิ้ว  (7.5 × 9.0 ซม.)</option>
-  </select>
-
-  <div class="tip">
-    <strong>💡 คำแนะนำ:</strong><br>
-    • สวมเสื้อสีเข้ม ไม่ควรสีเดียวกับพื้นหลัง<br>
-    • แสงสม่ำเสมอ ไม่มีเงาบนหน้า<br>
-    • มองตรง ไม่สวมแว่นตา<br>
-    • <strong>ถ้ากล้องไม่ทำงาน</strong> ดูส่วน Debug และ<br>
-      &nbsp;&nbsp;ลองเปิดเบราว์เซอร์ใหม่ → กด "อนุญาต" กล้อง
-  </div>
-</div>
-
-<div class="card full" id="res-sec">
-  <div class="card-ttl"><i class="fa-solid fa-image"></i>รูปที่ประมวลผลแล้ว</div>
-
-  <div class="prog-wrap" id="prog-wrap">
-    <div class="prog-top">
-      <span id="prog-lbl">กำลังประมวลผล...</span>
-      <span id="prog-pct">0%</span>
-    </div>
-    <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
-  </div>
-
-  <div class="photo-wrap" id="photo-wrap" style="margin-top:14px"></div>
-
-  <div class="bgrp" style="margin-top:16px">
-    <button class="btn btn-green" id="btn-dl" disabled><i class="fa-solid fa-download"></i> ดาวน์โหลด</button>
-    <button class="btn btn-blue"  id="btn-sheet"><i class="fa-solid fa-print"></i> แผ่น 4 ใบ</button>
-    <button class="btn btn-gray"  id="btn-retake"><i class="fa-solid fa-rotate-left"></i> ถ่ายใหม่</button>
-  </div>
-  <div class="sheet" id="sheet"></div>
-</div>
-
-</div></div>
-
-<canvas id="cap-cvs" style="display:none"></canvas>
-
-<script>
-const S={
-  stream:null,devices:[],devIdx:0,
-  bright:100,cont:100,bgColor:'#003087',
-  sz:{w:95,h:113,lbl:'1 นิ้ว'},result:null,logs:[],
-};
-const SZ={
-  '1':{w:95,h:113,lbl:'1 นิ้ว'},'1.5':{w:144,h:170,lbl:'1.5 นิ้ว'},
-  '2':{w:189,h:227,lbl:'2 นิ้ว'},'2.5':{w:246,h:284,lbl:'2.5 นิ้ว'},
-  '3':{w:284,h:340,lbl:'3 นิ้ว'},
-};
-
-const $=id=>document.getElementById(id);
-const vid=$('vid'),camPh=$('cam-ph'),gRing=$('g-ring'),gTxt=$('g-txt');
-const sdot=$('sdot'),stxtEl=$('stxt');
-const btnOpen=$('btn-open'),btnCap=$('btn-cap'),btnSw=$('btn-sw'),btnStop=$('btn-stop');
-const btnDl=$('btn-dl'),btnSheet=$('btn-sheet'),btnRetake=$('btn-retake');
-const resSec=$('res-sec'),photoWrap=$('photo-wrap'),sheet=$('sheet');
-const dbgEl=$('dbg'),capCvs=$('cap-cvs');
-
-function log(msg){
-  const t=new Date().toLocaleTimeString('th-TH');
-  S.logs.push(`[${t}] ${msg}`);
-  if(S.logs.length>40)S.logs.shift();
-  dbgEl.innerHTML=S.logs.map(l=>`<div>${l}</div>`).join('');
-  dbgEl.scrollTop=dbgEl.scrollHeight;
-  console.log('[CAM]',msg);
-}
-$('btn-dbg').onclick=()=>dbgEl.classList.toggle('on');
-
-function setSt(type,msg){
-  sdot.className='sdot '+(type||'');
-  stxtEl.textContent=msg;
-  log(msg);
-}
-
-function updF(){
-  const b=$('sl-b').value,c=$('sl-c').value;
-  S.bright=+b;S.cont=+c;
-  $('vb-b').textContent=b+'%';$('vb-c').textContent=c+'%';
-  vid.style.filter=`brightness(${b}%) contrast(${c}%)`;
-  gr('sl-b');gr('sl-c');
-}
-function gr(id){
-  const e=$(id);
-  e.style.setProperty('--pct',((e.value-e.min)/(e.max-e.min)*100).toFixed(1)+'%');
-}
-
-document.querySelectorAll('.chip').forEach(c=>{
-  c.addEventListener('click',()=>{
-    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
-    c.classList.add('active');
-    S.bgColor=c.querySelector('input').value;
-  });
-});
-$('sz-sel').onchange=e=>{S.sz=SZ[e.target.value]};
-
-btnOpen.onclick=()=>startCam(null);
-
-async function startCam(deviceId){
-  setSt('warn','⏳ กำลังขอสิทธิ์กล้อง...');
-  btnOpen.disabled=true;
-
-  stopStream();
-
-  log('protocol: '+location.protocol);
-  log('host: '+location.host);
-  log('mediaDevices: '+(navigator.mediaDevices?'OK':'MISSING'));
-
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    // iOS 10 / Android legacy fallback
-    const fn=navigator.getUserMedia||navigator.webkitGetUserMedia||
-              navigator.mozGetUserMedia||navigator.msGetUserMedia;
-    if(fn){
-      log('ใช้ legacy getUserMedia');
-      fn.call(navigator,{video:true,audio:false},
-        s=>attachStream(s),
-        e=>{camErr(e);btnOpen.disabled=false;}
-      );
-      return;
-    }
-    camErr({name:'NotSupportedError',message:'API ไม่พบ'});
-    btnOpen.disabled=false;
-    return;
-  }
-
-  const list=[
-    ...(deviceId?[{video:{deviceId:{exact:deviceId}},audio:false}]:[]),
-    {video:{facingMode:'user',  width:{ideal:640},height:{ideal:480}},audio:false},
-    {video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false},
-    {video:{width:{ideal:640},height:{ideal:480}},audio:false},
-    {video:true,audio:false},
-  ];
-
-  let stream=null,lastErr=null;
-  for(let i=0;i<list.length;i++){
-    try{
-      log(`ลอง [${i+1}/${list.length}]: ${JSON.stringify(list[i].video)}`);
-      stream=await navigator.mediaDevices.getUserMedia(list[i]);
-      log('✅ stream OK, tracks='+stream.getVideoTracks().length);
-      break;
-    }catch(e){
-      lastErr=e;
-      log(`❌ [${i+1}] ${e.name}: ${e.message}`);
-    }
-  }
-
-  btnOpen.disabled=false;
-  if(!stream){camErr(lastErr);return;}
-  await attachStream(stream);
-}
-
-async function attachStream(stream){
-  S.stream=stream;
-  vid.setAttribute('autoplay','');
-  vid.setAttribute('playsinline','');
-  vid.setAttribute('muted','');
-  vid.muted=true;
-  vid.srcObject=stream;
-
-  try{
-    const p=vid.play();
-    if(p&&p.catch)p.catch(e=>log('play() warn: '+e.message));
-  }catch(e){log('play() ex: '+e.message)}
-
-  // รอ metadata
-  await new Promise(res=>{
-    if(vid.readyState>=2){res();return;}
-    const t=setTimeout(res,4000);
-    vid.onloadedmetadata=()=>{clearTimeout(t);res();};
-  });
-
-  log(`video: ${vid.videoWidth}×${vid.videoHeight}`);
-
-  camPh.classList.add('hidden');
-  gRing.style.display='';gTxt.style.display='';
-  btnCap.disabled=false;
-  btnOpen.innerHTML='<i class="fa-solid fa-rotate"></i> รีเซ็ตกล้อง';
-  setSt('on',`📷 กล้องพร้อม (${vid.videoWidth||'?'}×${vid.videoHeight||'?'})`);
-
-  try{
-    const devs=await navigator.mediaDevices.enumerateDevices();
-    S.devices=devs.filter(d=>d.kind==='videoinput');
-    log('จำนวนกล้อง: '+S.devices.length);
-    btnSw.disabled=S.devices.length<2;
-  }catch(e){log('enumerate err: '+e.message)}
-}
-
-function camErr(e){
-  let msg='';
-  if(e&&e.name){
-    if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')
-      msg='<b>ปฏิเสธสิทธิ์กล้อง</b><br>กรุณากด "อนุญาต" ที่แถบเบราว์เซอร์<br>แล้วกด "เปิดกล้อง" อีกครั้ง';
-    else if(e.name==='NotFoundError')
-      msg='<b>ไม่พบกล้อง</b> ในอุปกรณ์นี้';
-    else if(e.name==='NotReadableError')
-      msg='<b>กล้องถูกใช้งานโดยแอปอื่น</b><br>ปิดแอปกล้องอื่น แล้วลองใหม่';
-    else if(e.name==='SecurityError')
-      msg='<b>Security Policy บล็อก</b><br>ลองใช้เบราว์เซอร์อื่น';
-    else if(e.name==='NotSupportedError')
-      msg='<b>เบราว์เซอร์ไม่รองรับ</b><br>ใช้ Chrome หรือ Safari รุ่นใหม่';
-    else
-      msg=e.name+': '+e.message;
-  }else msg=String(e);
-
-  setSt('err','❌ เปิดกล้องไม่ได้');
-  camPh.classList.remove('hidden');
-  camPh.innerHTML=`
-    <i class="fa-solid fa-triangle-exclamation" style="color:#ff7875;font-size:40px"></i>
-    <p style="color:#ff7875;font-weight:600">เปิดกล้องไม่ได้</p>
-    <p style="font-size:12px;opacity:.9">${msg}</p>
-    <p style="font-size:11px;opacity:.6;margin-top:4px">กด "🐛 Debug" เพื่อดูรายละเอียด</p>
-  `;
-}
-
-function stopStream(){
-  if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null;}
-}
-
-btnSw.onclick=()=>{
-  S.devIdx=(S.devIdx+1)%S.devices.length;
-  log('สลับกล้อง index '+S.devIdx);
-  startCam(S.devices[S.devIdx].deviceId);
-};
-
-btnStop.onclick=()=>{
-  Swal.fire({
-    title:'หยุดกล้อง?',icon:'question',
-    showCancelButton:true,confirmButtonText:'หยุด',cancelButtonText:'ยกเลิก'
-  }).then(r=>{
-    if(!r.isConfirmed)return;
-    stopStream();
-    vid.srcObject=null;
-    btnCap.disabled=true;btnSw.disabled=true;
-    gRing.style.display='none';gTxt.style.display='none';
-    camPh.classList.remove('hidden');
-    camPh.innerHTML=`<i class="fa-solid fa-camera"></i><p>กด <strong style="color:var(--p300)">เปิดกล้อง</strong><br>เพื่อเริ่มใหม่</p>`;
-    setSt('','หยุดกล้องแล้ว');
-    btnOpen.innerHTML='<i class="fa-solid fa-video"></i> เปิดกล้อง';
-  });
-};
-
-btnCap.onclick=async()=>{
-  if(!S.stream){Swal.fire({icon:'warning',title:'กล้องยังไม่ได้เปิด',confirmButtonText:'ตกลง'});return;}
-
-  $('cam-box').style.outline='6px solid white';
-  setTimeout(()=>$('cam-box').style.outline='',180);
-
-  const vw=vid.videoWidth||640,vh=vid.videoHeight||480;
-  log(`ถ่ายรูป ${vw}×${vh}`);
-
-  capCvs.width=vw;capCvs.height=vh;
-  const ctx=capCvs.getContext('2d');
-  ctx.filter=`brightness(${S.bright}%) contrast(${S.cont}%)`;
-  ctx.drawImage(vid,0,0,vw,vh);
-
-  // crop portrait 1:1.2
-  const cW=Math.min(vw,vh*0.833),cH=cW*1.2;
-  const cx=(vw-cW)/2,cy=(vh-cH)/2;
-  const oW=480,oH=Math.round(oW*1.2);
-  const oCvs=mkCvs(oW,oH);
-  const oCtx=oCvs.getContext('2d');
-  oCtx.filter=`brightness(${S.bright}%) contrast(${S.cont}%)`;
-  oCtx.drawImage(capCvs,cx,cy,cW,cH,0,0,oW,oH);
-
-  await procBg(oCvs.toDataURL('image/jpeg',.95));
-};
-
-async function procBg(dataUrl){
-  showProc('🔍 วิเคราะห์ภาพ...');
-  await sleep(80);
-
-  const img=await loadImg(dataUrl);
-  const W=img.width,H=img.height;
-  const wC=mkCvs(W,H);const wX=wC.getContext('2d');
-  wX.drawImage(img,0,0);
-  const id=wX.getImageData(0,0,W,H),d=id.data;
-
-  updProg(20,'วิเคราะห์สีพื้นหลัง...');await sleep(50);
-
-  const smp=sampleEdges(d,W,H);
-  const bgR=avg(smp.map(s=>s[0])),bgG=avg(smp.map(s=>s[1])),bgB=avg(smp.map(s=>s[2]));
-  log(`bg rgb(${Math.round(bgR)},${Math.round(bgG)},${Math.round(bgB)})`);
-
-  updProg(40,'ลบพื้นหลัง...');await sleep(50);
-
-  const thr=65,soft=35;
-  const alpha=new Uint8ClampedArray(W*H);
-  for(let i=0;i<W*H;i++){
-    const r=d[i*4],g=d[i*4+1],b=d[i*4+2];
-    const dist=Math.sqrt((r-bgR)**2+(g-bgG)**2+(b-bgB)**2);
-    if(dist<thr)alpha[i]=0;
-    else if(dist<thr+soft)alpha[i]=Math.round((dist-thr)/soft*255);
-    else alpha[i]=255;
-  }
-
-  updProg(60,'กรองขอบ...');await sleep(50);
-  const sA=boxBlur(alpha,W,H,2);
-
-  updProg(75,'เติมพื้นหลังใหม่...');await sleep(50);
-
-  const oC=mkCvs(W,H);const oX=oC.getContext('2d');
-  oX.fillStyle=S.bgColor;oX.fillRect(0,0,W,H);
-  const si=wX.getImageData(0,0,W,H);
-  for(let i=0;i<W*H;i++)si.data[i*4+3]=sA[i];
-  wX.putImageData(si,0,0);oX.drawImage(wC,0,0);
-
-  updProg(90,'ปรับขนาด...');await sleep(50);
-
-  const fC=mkCvs(S.sz.w,S.sz.h);const fX=fC.getContext('2d');
-  fX.imageSmoothingEnabled=true;fX.imageSmoothingQuality='high';
-  fX.drawImage(oC,0,0,S.sz.w,S.sz.h);
-
-  updProg(100,'เสร็จสิ้น!');await sleep(200);
-  S.result=fC.toDataURL('image/jpeg',.96);
-  hideProc();showResult(S.result);
-}
-
-function sampleEdges(d,W,H){
-  const s=[],step=8;
-  for(let x=0;x<W;x+=step){
-    const t=x*4,b=((H-1)*W+x)*4;
-    s.push([d[t],d[t+1],d[t+2]]);s.push([d[b],d[b+1],d[b+2]]);
-  }
-  for(let y=0;y<H;y+=step){
-    const l=y*W*4,r=(y*W+W-1)*4;
-    s.push([d[l],d[l+1],d[l+2]]);s.push([d[r],d[r+1],d[r+2]]);
-  }
-  return s;
-}
-const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
-function boxBlur(alpha,W,H,r){
-  const o=new Uint8ClampedArray(alpha.length);
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    let s=0,c=0;
-    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
-      const nx=x+dx,ny=y+dy;
-      if(nx>=0&&nx<W&&ny>=0&&ny<H){s+=alpha[ny*W+nx];c++;}
-    }
-    o[y*W+x]=Math.round(s/c);
-  }
-  return o;
-}
-const mkCvs=(w,h)=>Object.assign(document.createElement('canvas'),{width:w,height:h});
-
-function showResult(dataUrl){
-  resSec.classList.add('on');
-  photoWrap.innerHTML='';sheet.classList.remove('on');sheet.innerHTML='';
-
-  const pW=Math.min(S.sz.w*2.5,260),pH=Math.round(pW*S.sz.h/S.sz.w);
-  const box=document.createElement('div');
-  box.className='photo-box';box.style.cssText=`width:${pW}px;height:${pH}px`;
-  const imgEl=Object.assign(document.createElement('img'),{src:dataUrl});
-  const lbl=Object.assign(document.createElement('div'),{className:'photo-lbl',textContent:S.sz.lbl});
-  box.append(imgEl,lbl);photoWrap.appendChild(box);
-  btnDl.disabled=false;
-
-  Swal.fire({icon:'success',title:'ลบพื้นหลังสำเร็จ 🎉',
-    text:'รูปพร้อมสำหรับทำบัตรคนพิการ',
-    timer:2500,timerProgressBar:true,showConfirmButton:false,toast:true,position:'top-end'});
-  resSec.scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-btnDl.onclick=()=>{
-  if(!S.result)return;
-  const a=document.createElement('a');
-  a.download=`รูปติดบัตร_${$('sz-sel').value}นิ้ว_${Date.now()}.jpg`;
-  a.href=S.result;a.click();
-};
-
-btnSheet.onclick=()=>{
-  if(!S.result){Swal.fire({icon:'warning',title:'ยังไม่มีรูป',confirmButtonText:'ตกลง'});return;}
-  sheet.innerHTML='';
-  for(let i=0;i<4;i++)sheet.appendChild(Object.assign(document.createElement('img'),{src:S.result}));
-  sheet.classList.add('on');
-  Swal.fire({icon:'info',title:'แผ่นรูป 4 ใบ',
-    html:'<b>คลิกขวา → บันทึกรูป</b> หรือ <b>Ctrl+P</b>',confirmButtonText:'รับทราบ'});
-};
-
-btnRetake.onclick=()=>{
-  resSec.classList.remove('on');S.result=null;btnDl.disabled=true;
-  hideProg();
-  Swal.fire({icon:'info',title:'พร้อมถ่ายใหม่',toast:true,position:'top-end',timer:1500,showConfirmButton:false});
-};
-
-function showProc(m){$('proc-txt').textContent=m;$('proc-ov').classList.add('on');$('prog-wrap').classList.add('on');updProg(5,m);}
-function hideProc(){$('proc-ov').classList.remove('on');}
-function hideProg(){$('prog-wrap').classList.remove('on');updProg(0,'');}
-function updProg(pct,lbl){
-  $('prog-fill').style.width=pct+'%';$('prog-pct').textContent=pct+'%';
-  if(lbl)$('prog-lbl').textContent=lbl;
-}
-
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});
-
-window.addEventListener('load',()=>{
-  gr('sl-b');gr('sl-c');
-  log('โหลดหน้าเสร็จ');
-  log('URL: '+location.href);
-  log('protocol: '+location.protocol);
-  log('mediaDevices: '+(!!navigator.mediaDevices));
-  log('getUserMedia: '+(!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)));
-});
-</script>
+<body class="p-4">
+
+    <!-- Header -->
+    <header class="mb-4 flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-pink-100">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 pink-gradient rounded-lg flex items-center justify-center text-white">
+                <i class="fas fa-id-card text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-gray-800 leading-none text-lg">ระบบถ่ายรูปติดบัตร AI</h1>
+                <p class="text-xs text-gray-500 mt-1">One-Stop Solution for Disability ID</p>
+            </div>
+        </div>
+        <div id="cameraStatus" class="text-[10px] font-medium px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full border border-yellow-200">
+            <i class="fas fa-circle-notch fa-spin mr-1"></i> ระบบ AI กำลังโหลด...
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
+        
+        <!-- Column 1: Live Camera -->
+        <section class="panel-card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-semibold text-gray-700 text-sm"><i class="fas fa-video mr-2 text-pink-500"></i>กล้องสด</h2>
+                <span class="text-[10px] text-gray-400">สัดส่วน 3:4</span>
+            </div>
+            <div class="flex-1 flex flex-col">
+                <div class="video-wrapper">
+                    <div class="video-content">
+                        <div id="flashEffect" class="flash"></div>
+                        <video id="webcam" autoplay playsinline></video>
+                        <canvas id="outputCanvas"></canvas>
+                        <div class="face-guide"></div>
+                    </div>
+                </div>
+                <button id="snapBtn" class="mt-4 w-full bg-pink-500 hover:bg-pink-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-pink-100 transition-all active:scale-95">
+                    <i class="fas fa-camera mr-2"></i> กดถ่ายรูป
+                </button>
+                <button id="retakeBtn" class="mt-4 w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-3 rounded-xl font-bold transition-all hidden">
+                    <i class="fas fa-redo mr-2"></i> ถ่ายใหม่
+                </button>
+            </div>
+        </section>
+
+        <!-- Column 2: Controls -->
+        <section class="panel-card p-4">
+            <h2 class="font-semibold text-gray-700 text-sm mb-4"><i class="fas fa-sliders mr-2 text-pink-500"></i>ตั้งค่าและปรับแต่ง</h2>
+            
+            <div class="space-y-6">
+                <!-- BG Color -->
+                <div>
+                    <label class="text-xs font-bold text-gray-500 mb-3 block uppercase">สีพื้นหลังติดบัตร</label>
+                    <div id="bgColorPickers" class="grid grid-cols-5 gap-2">
+                        <button onclick="updateBg('#003399', this)" class="aspect-square rounded-lg bg-[#003399] border-2 border-white shadow-sm btn-active"></button>
+                        <button onclick="updateBg('#3399ff', this)" class="aspect-square rounded-lg bg-[#3399ff] border-2 border-white shadow-sm"></button>
+                        <button onclick="updateBg('#ffffff', this)" class="aspect-square rounded-lg bg-white border-2 border-gray-100 shadow-sm"></button>
+                        <button onclick="updateBg('#ffb6c1', this)" class="aspect-square rounded-lg bg-[#ffb6c1] border-2 border-white shadow-sm"></button>
+                        <button onclick="updateBg('original', this)" class="aspect-square rounded-lg bg-gray-100 border-2 border-white shadow-sm flex items-center justify-center text-gray-400"><i class="fas fa-image text-xs"></i></button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="text-xs font-bold text-gray-500 uppercase">ความสว่าง</label>
+                            <span id="v-bright" class="text-[10px] text-pink-500 font-bold">100%</span>
+                        </div>
+                        <input type="range" id="brightness" min="50" max="150" value="100" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="text-xs font-bold text-gray-500 uppercase">ความคมชัด</label>
+                            <span id="v-contrast" class="text-[10px] text-pink-500 font-bold">100%</span>
+                        </div>
+                        <input type="range" id="contrast" min="50" max="150" value="100" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500">
+                    </div>
+                </div>
+
+                <div class="p-3 bg-pink-50 rounded-lg border border-pink-100">
+                    <p class="text-[11px] text-pink-700 leading-relaxed">
+                        <i class="fas fa-info-circle mr-1"></i> <b>คำแนะนำ:</b> จัดใบหน้าให้อยู่ในกรอบเส้นประ และเลือกพื้นหลังสีน้ำเงินเข้มสำหรับมาตรฐานบัตรประจำตัว
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Column 3: Result -->
+        <section class="panel-card p-4">
+            <h2 class="font-semibold text-gray-700 text-sm mb-3"><i class="fas fa-check-circle mr-2 text-green-500"></i>รูปที่พร้อมใช้งาน</h2>
+            <div class="flex-1 flex flex-col min-h-0">
+                <div class="preview-box flex-1">
+                    <div id="emptyPreview" class="text-center text-gray-300">
+                        <i class="fas fa-id-badge text-4xl mb-2"></i>
+                        <p class="text-[10px]">ยังไม่ได้ถ่ายรูป</p>
+                    </div>
+                    <img id="imageResult" class="hidden" alt="Result">
+                </div>
+                
+                <div class="mt-4 space-y-3">
+                    <select id="photoSize" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-pink-400 outline-none">
+                        <option value="1">1 นิ้ว (2.5 x 3.5 ซม.)</option>
+                        <option value="1.5">1.5 นิ้ว (3.0 x 4.0 ซม.)</option>
+                        <option value="2">2 นิ้ว (4.0 x 5.2 ซม.)</option>
+                    </select>
+                    
+                    <button id="downloadBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center" disabled>
+                        <i class="fas fa-download mr-2"></i> ดาวน์โหลดรูปภาพ
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-4 text-center text-[10px] text-gray-400">
+        ระบบใช้ AI ประมวลผลภายในเครื่อง | สนับสนุนการเข้าถึงสิทธิผู้พิการ | v2.1 Fixed
+    </footer>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('outputCanvas');
+        const ctx = canvas.getContext('2d');
+        const snapBtn = document.getElementById('snapBtn');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const imageResult = document.getElementById('imageResult');
+        const emptyPreview = document.getElementById('emptyPreview');
+        const brightnessInput = document.getElementById('brightness');
+        const contrastInput = document.getElementById('contrast');
+        const photoSizeSelect = document.getElementById('photoSize');
+        const flashEffect = document.getElementById('flashEffect');
+
+        let selectedBgColor = '#003399'; 
+        let useAI = true;
+        let isSnapped = false;
+
+        // UI Helpers
+        brightnessInput.oninput = (e) => document.getElementById('v-bright').innerText = e.target.value + '%';
+        contrastInput.oninput = (e) => document.getElementById('v-contrast').innerText = e.target.value + '%';
+
+        // --- AI Segmentation ---
+        const selfieSegmentation = new SelfieSegmentation({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+        });
+
+        selfieSegmentation.setOptions({ modelSelection: 1 });
+
+        selfieSegmentation.onResults((results) => {
+            if (isSnapped) return;
+
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw person mask
+            ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'source-in';
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+            // Draw background
+            ctx.globalCompositeOperation = 'destination-over';
+            if (useAI) {
+                ctx.fillStyle = selectedBgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+            }
+
+            ctx.restore();
+
+            if (document.getElementById('cameraStatus').innerText.includes('กำลังโหลด')) {
+                document.getElementById('cameraStatus').innerHTML = '<i class="fas fa-check-circle mr-1 text-green-500"></i> AI พร้อมทำงาน';
+                document.getElementById('cameraStatus').className = 'text-[10px] font-medium px-3 py-1 bg-green-50 text-green-700 rounded-full border border-green-200';
+            }
+        });
+
+        // --- Camera Setup ---
+        async function setupCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 } }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const loop = async () => {
+                        if (!isSnapped) {
+                            try {
+                                await selfieSegmentation.send({image: video});
+                            } catch (e) { console.error("AI frame error", e); }
+                        }
+                        requestAnimationFrame(loop);
+                    };
+                    loop();
+                };
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'ไม่พบกล้อง', text: 'กรุณาเปิดการเข้าถึงกล้องและรีเฟรชหน้าเว็บ' });
+            }
+        }
+
+        // --- Interaction ---
+        window.updateBg = (color, el) => {
+            document.querySelectorAll('#bgColorPickers button').forEach(b => b.classList.remove('btn-active'));
+            el.classList.add('btn-active');
+            useAI = color !== 'original';
+            if (useAI) selectedBgColor = color;
+        };
+
+        // SNAP LOGIC
+        snapBtn.onclick = () => {
+            // Flash Effect
+            flashEffect.classList.remove('flash-active');
+            void flashEffect.offsetWidth; // trigger reflow
+            flashEffect.classList.add('flash-active');
+
+            isSnapped = true;
+            
+            // Calculate Crop (3:4)
+            const targetRatio = 3/4;
+            const currentH = canvas.height;
+            const cropWidth = currentH * targetRatio;
+            const startX = (canvas.width - cropWidth) / 2;
+
+            // Create temporary high-quality canvas
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = 600;
+            finalCanvas.height = 800;
+            const fCtx = finalCanvas.getContext('2d');
+            
+            // Apply Filters
+            fCtx.filter = `brightness(${brightnessInput.value}%) contrast(${contrastInput.value}%)`;
+            
+            // Draw cropped image from main canvas
+            fCtx.drawImage(canvas, startX, 0, cropWidth, currentH, 0, 0, 600, 800);
+
+            // Update UI
+            imageResult.src = finalCanvas.toDataURL('image/jpeg', 0.95);
+            imageResult.classList.remove('hidden');
+            emptyPreview.classList.add('hidden');
+            
+            snapBtn.classList.add('hidden');
+            retakeBtn.classList.remove('hidden');
+            downloadBtn.disabled = false;
+        };
+
+        retakeBtn.onclick = () => {
+            isSnapped = false;
+            imageResult.classList.add('hidden');
+            emptyPreview.classList.remove('hidden');
+            snapBtn.classList.remove('hidden');
+            retakeBtn.classList.add('hidden');
+            downloadBtn.disabled = true;
+            imageResult.src = "";
+        };
+
+        downloadBtn.onclick = () => {
+            const size = photoSizeSelect.value;
+            const exportCanvas = document.createElement('canvas');
+            let w, h;
+            
+            // Calculation based on 300 DPI
+            if(size == "1") { w = 300; h = 413; }
+            else if(size == "1.5") { w = 354; h = 472; }
+            else { w = 472; h = 614; }
+
+            exportCanvas.width = w;
+            exportCanvas.height = h;
+            const eCtx = exportCanvas.getContext('2d');
+            eCtx.drawImage(imageResult, 0, 0, w, h);
+
+            const link = document.createElement('a');
+            link.download = `id-photo-${size}-inch.jpg`;
+            link.href = exportCanvas.toDataURL('image/jpeg', 1.0);
+            link.click();
+            
+            Swal.fire({ toast: true, position: 'top-end', title: 'ดาวน์โหลดสำเร็จ', icon: 'success', showConfirmButton: false, timer: 2000 });
+        };
+
+        window.onload = setupCamera;
+    </script>
 </body>
 </html>
