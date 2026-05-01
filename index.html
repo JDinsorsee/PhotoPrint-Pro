@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบถ่ายรูปติดบัตรผู้พิการ - Pink Dashboard</title>
+    <title>ระบบถ่ายรูปติดบัตร AI - Pink Compact Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -15,11 +15,12 @@
     <style>
         body {
             font-family: 'Kanit', sans-serif;
-            background-color: #fff1f2; /* พื้นหลังสีชมพูอ่อนมาก */
+            background-color: #fff1f2;
             height: 100vh;
-            overflow: hidden; /* ล็อกหน้าจอไม่ให้เลื่อน */
+            overflow: hidden; /* ล็อกหน้าจอถาวร */
             display: flex;
             flex-direction: column;
+            padding: 10px;
         }
         .pink-gradient {
             background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
@@ -27,12 +28,13 @@
         .panel-card {
             background: white;
             border-radius: 1rem;
-            box-shadow: 0 4px 15px -3px rgba(236, 72, 153, 0.1);
+            box-shadow: 0 2px 10px -3px rgba(236, 72, 153, 0.15);
             border: 1px solid #fce7f3;
             display: flex;
             flex-direction: column;
             height: 100%;
             overflow: hidden;
+            padding: 12px;
         }
         .video-wrapper {
             position: relative;
@@ -41,6 +43,7 @@
             background: #2d1a24;
             border-radius: 0.75rem;
             overflow: hidden;
+            flex-shrink: 0;
         }
         .video-content {
             position: absolute;
@@ -48,13 +51,14 @@
         }
         #outputCanvas {
             width: 100%; height: 100%; object-fit: cover;
+            /* Filter will be applied via JS */
         }
         .face-guide {
             position: absolute;
             top: 45%; left: 50%;
             transform: translate(-50%, -50%);
             width: 50%; height: 55%;
-            border: 2px dashed rgba(244, 114, 182, 0.6);
+            border: 2px dashed rgba(244, 114, 182, 0.5);
             border-radius: 50% 50% 45% 45%;
             pointer-events: none;
             z-index: 10;
@@ -76,149 +80,155 @@
         }
         .btn-active {
             outline: 3px solid #ec4899;
-            transform: scale(1.05);
+            transform: scale(1.02);
         }
         #webcam { display: none; }
         
-        /* Flash effect */
         #flash {
             position: absolute; inset: 0; background: white; opacity: 0; pointer-events: none; z-index: 50;
         }
         .animate-flash { animation: flash-anim 0.3s ease-out; }
         @keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* Custom Scrollbar for small internal areas */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #fff1f2; }
-        ::-webkit-scrollbar-thumb { background: #f9a8d4; border-radius: 10px; }
+        /* Compact Sliders */
+        input[type=range] {
+            height: 6px;
+            -webkit-appearance: none;
+            background: #ffe4e6;
+            border-radius: 5px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px; width: 16px;
+            border-radius: 50%; background: #ec4899;
+            cursor: pointer;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #ec4899;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
-<body class="p-3 md:p-4">
+<body>
 
-    <!-- Header -->
-    <header class="mb-3 flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-pink-100">
+    <!-- Compact Header -->
+    <header class="flex justify-between items-center bg-white p-2 mb-2 rounded-xl shadow-sm border border-pink-100">
         <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 pink-gradient rounded-xl flex items-center justify-center text-white shadow-md">
-                <i class="fas fa-camera-retro text-xl"></i>
+            <div class="w-8 h-8 pink-gradient rounded-lg flex items-center justify-center text-white">
+                <i class="fas fa-camera text-sm"></i>
             </div>
-            <div>
-                <h1 class="font-bold text-gray-800 text-base leading-tight">ระบบถ่ายรูปติดบัตร AI</h1>
-                <p class="text-[10px] text-pink-400 font-medium">One-Stop Disability ID Solution</p>
-            </div>
+            <h1 class="font-bold text-gray-800 text-sm">ระบบถ่ายรูป AI ติดบัตร</h1>
         </div>
-        <div id="cameraStatus" class="text-[10px] font-bold px-3 py-1.5 bg-pink-50 text-pink-600 rounded-full border border-pink-100">
-            <i class="fas fa-circle-notch fa-spin mr-2"></i> กำลังโหลดระบบ...
+        <div id="cameraStatus" class="text-[9px] font-bold px-3 py-1 bg-pink-50 text-pink-600 rounded-full border border-pink-100">
+            <i class="fas fa-spinner fa-spin mr-1"></i> เตรียมระบบ...
         </div>
     </header>
 
-    <!-- Main Dashboard -->
+    <!-- Main Grid - All on one screen -->
     <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 min-h-0">
         
-        <!-- 1. กล้องสด -->
-        <section class="panel-card p-3">
-            <h2 class="text-xs font-bold text-pink-600 mb-2 flex items-center uppercase">
-                <i class="fas fa-video mr-2"></i> 1. กล้องถ่ายรูป
-            </h2>
-            <div class="flex-1 flex flex-col min-h-0">
-                <div class="video-wrapper">
-                    <div class="video-content">
-                        <div id="flash"></div>
-                        <video id="webcam" autoplay playsinline></video>
-                        <canvas id="outputCanvas"></canvas>
-                        <div class="face-guide"></div>
-                    </div>
+        <!-- Column 1: Camera -->
+        <section class="panel-card">
+            <h2 class="section-title"><i class="fas fa-video mr-2"></i> 1. กล้อง</h2>
+            <div class="video-wrapper">
+                <div class="video-content">
+                    <div id="flash"></div>
+                    <video id="webcam" autoplay playsinline></video>
+                    <canvas id="outputCanvas"></canvas>
+                    <div class="face-guide"></div>
                 </div>
-                <div class="mt-3">
-                    <button id="snapBtn" class="w-full bg-pink-500 hover:bg-pink-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-pink-100 transition-all active:scale-95 flex items-center justify-center">
-                        <i class="fas fa-camera mr-2"></i> ถ่ายรูปตอนนี้
-                    </button>
-                    <button id="retakeBtn" class="w-full bg-pink-50 hover:bg-pink-100 text-pink-600 py-3 rounded-xl font-bold text-sm hidden transition-all">
-                        <i class="fas fa-redo mr-2"></i> ถ่ายใหม่
-                    </button>
-                </div>
+            </div>
+            <div class="mt-2">
+                <button id="snapBtn" class="w-full bg-pink-500 hover:bg-pink-600 text-white py-2.5 rounded-lg font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center">
+                    <i class="fas fa-camera mr-2"></i> ถ่ายรูปตอนนี้
+                </button>
+                <button id="retakeBtn" class="w-full bg-pink-50 hover:bg-pink-100 text-pink-600 py-2.5 rounded-lg font-bold text-xs hidden flex items-center justify-center">
+                    <i class="fas fa-redo mr-2"></i> ถ่ายใหม่
+                </button>
             </div>
         </section>
 
-        <!-- 2. การปรับแต่ง -->
-        <section class="panel-card p-3">
-            <h2 class="text-xs font-bold text-pink-600 mb-4 flex items-center uppercase">
-                <i class="fas fa-magic mr-2"></i> 2. ปรับแต่งธีมชมพู
-            </h2>
-            <div class="flex-1 overflow-y-auto pr-1">
-                <div class="space-y-6">
-                    <!-- พื้นหลัง -->
-                    <div>
-                        <label class="text-[10px] font-bold text-gray-400 mb-3 block uppercase tracking-tighter">เลือกสีพื้นหลังติดบัตร</label>
-                        <div id="bgOptions" class="grid grid-cols-5 gap-2">
-                            <button onclick="changeBg('#003399', this)" class="aspect-square rounded-lg bg-[#003399] border-2 border-white shadow-sm btn-active"></button>
-                            <button onclick="changeBg('#3399ff', this)" class="aspect-square rounded-lg bg-[#3399ff] border-2 border-white shadow-sm"></button>
-                            <button onclick="changeBg('#ffffff', this)" class="aspect-square rounded-lg bg-white border-2 border-gray-100 shadow-sm"></button>
-                            <button onclick="changeBg('#f9a8d4', this)" class="aspect-square rounded-xl bg-[#f9a8d4] border-2 border-white shadow-sm"></button>
-                            <button onclick="changeBg('none', this)" class="aspect-square rounded-lg bg-gray-50 border-2 border-white shadow-sm flex items-center justify-center text-gray-300">
-                                <i class="fas fa-image text-xs"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- สไลเดอร์ปรับแสง -->
-                    <div class="space-y-5">
-                        <div>
-                            <div class="flex justify-between items-center mb-1.5">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">ความสว่าง</label>
-                                <span id="val-bright" class="text-[10px] font-bold text-pink-500">100%</span>
-                            </div>
-                            <input type="range" id="brightness" min="50" max="150" value="100" class="w-full h-1.5 bg-pink-100 rounded-lg appearance-none cursor-pointer accent-pink-500">
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-center mb-1.5">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase">ความคมชัด</label>
-                                <span id="val-contrast" class="text-[10px] font-bold text-pink-500">100%</span>
-                            </div>
-                            <input type="range" id="contrast" min="50" max="150" value="100" class="w-full h-1.5 bg-pink-100 rounded-lg appearance-none cursor-pointer accent-pink-500">
-                        </div>
-                    </div>
-
-                    <!-- กล่องข้อความ -->
-                    <div class="bg-pink-50 p-3 rounded-xl border border-pink-100">
-                        <p class="text-[10px] text-pink-700 leading-relaxed">
-                            <i class="fas fa-heart mr-1"></i> <b>Tip:</b> พื้นหลังสีชมพูอ่อนช่วยให้ดูสดใสขึ้น แต่ถ้าใช้ติดบัตรราชการ แนะนำเลือกสีน้ำเงินเข้มครับ
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 3. ผลลัพธ์ -->
-        <section class="panel-card p-3">
-            <h2 class="text-xs font-bold text-pink-600 mb-2 flex items-center uppercase">
-                <i class="fas fa-check-circle mr-2"></i> 3. ตรวจสอบและบันทึก
-            </h2>
-            <div class="flex-1 flex flex-col min-h-0">
-                <div class="preview-box flex-1">
-                    <div id="noImage" class="text-center text-pink-200">
-                        <i class="fas fa-id-badge text-4xl mb-2 opacity-30"></i>
-                        <p class="text-[10px]">รอถ่ายรูป...</p>
-                    </div>
-                    <img id="imageResult" class="hidden" alt="Result">
-                </div>
+        <!-- Column 2: Adjustment & Size (MOVED SIZE HERE) -->
+        <section class="panel-card">
+            <h2 class="section-title"><i class="fas fa-sliders-h mr-2"></i> 2. ปรับแต่ง & ขนาด</h2>
+            <div class="flex-1 overflow-y-auto space-y-4 pr-1">
                 
-                <div class="mt-3 space-y-2">
-                    <select id="photoSize" class="w-full p-2 bg-pink-50 border border-pink-100 rounded-lg text-xs font-medium text-pink-700 focus:ring-2 focus:ring-pink-300 outline-none">
+                <!-- Background -->
+                <div>
+                    <label class="text-[9px] font-bold text-gray-400 mb-2 block uppercase">สีพื้นหลัง</label>
+                    <div id="bgOptions" class="grid grid-cols-5 gap-1.5">
+                        <button onclick="changeBg('#003399', this)" class="aspect-square rounded-md bg-[#003399] border-2 border-white shadow-sm btn-active"></button>
+                        <button onclick="changeBg('#3399ff', this)" class="aspect-square rounded-md bg-[#3399ff] border-2 border-white shadow-sm"></button>
+                        <button onclick="changeBg('#ffffff', this)" class="aspect-square rounded-md bg-white border-2 border-gray-100 shadow-sm"></button>
+                        <button onclick="changeBg('#f9a8d4', this)" class="aspect-square rounded-md bg-[#f9a8d4] border-2 border-white shadow-sm"></button>
+                        <button onclick="changeBg('none', this)" class="aspect-square rounded-md bg-gray-50 border-2 border-white shadow-sm flex items-center justify-center text-gray-400">
+                            <i class="fas fa-image text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Brightness/Contrast -->
+                <div class="space-y-3 pt-2">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="text-[9px] font-bold text-gray-500 uppercase">ความสว่าง</label>
+                            <span id="val-bright" class="text-[9px] font-bold text-pink-500">100%</span>
+                        </div>
+                        <input type="range" id="brightness" min="50" max="150" value="100" class="w-full">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="text-[9px] font-bold text-gray-500 uppercase">ความคมชัด</label>
+                            <span id="val-contrast" class="text-[9px] font-bold text-pink-500">100%</span>
+                        </div>
+                        <input type="range" id="contrast" min="50" max="150" value="100" class="w-full">
+                    </div>
+                </div>
+
+                <!-- PHOTO SIZE (MOVED FROM COL 3) -->
+                <div class="pt-2">
+                    <label class="text-[9px] font-bold text-gray-400 mb-2 block uppercase">เลือกขนาดรูปที่จะบันทึก</label>
+                    <select id="photoSize" class="w-full p-2 bg-pink-50 border border-pink-100 rounded-lg text-[11px] font-medium text-pink-700 outline-none">
                         <option value="1">1 นิ้ว (2.5 x 3.5 ซม.)</option>
                         <option value="1.5">1.5 นิ้ว (3.0 x 4.0 ซม.)</option>
                         <option value="2">2 นิ้ว (4.0 x 5.2 ซม.)</option>
                     </select>
-                    <button id="downloadBtn" disabled class="w-full bg-gray-800 hover:bg-black text-white py-3 rounded-xl font-bold text-sm shadow-md disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center">
-                        <i class="fas fa-download mr-2"></i> ดาวน์โหลดรูปภาพ
+                </div>
+
+                <div class="bg-pink-50 p-2 rounded-lg border border-pink-100 mt-2">
+                    <p class="text-[9px] text-pink-600 leading-tight">
+                        <i class="fas fa-info-circle mr-1"></i> ตัวปรับแสงจะทำงานแบบเรียลไทม์ เห็นผลทันทีที่หน้าจอกล้องครับ
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Column 3: Result -->
+        <section class="panel-card">
+            <h2 class="section-title"><i class="fas fa-check-circle mr-2"></i> 3. ผลลัพธ์</h2>
+            <div class="flex-1 flex flex-col min-h-0">
+                <div class="preview-box">
+                    <div id="noImage" class="text-center text-pink-200">
+                        <i class="fas fa-image text-3xl mb-1 opacity-20"></i>
+                        <p class="text-[9px]">ภาพพรีวิว</p>
+                    </div>
+                    <img id="imageResult" class="hidden" alt="Result">
+                </div>
+                
+                <div class="mt-2">
+                    <button id="downloadBtn" disabled class="w-full bg-slate-800 hover:bg-black text-white py-2.5 rounded-lg font-bold text-xs shadow-md disabled:opacity-20 transition-all flex items-center justify-center">
+                        <i class="fas fa-download mr-2"></i> บันทึกรูป
                     </button>
                 </div>
             </div>
         </section>
     </main>
-
-    <footer class="mt-2 text-center text-[9px] text-pink-300 font-medium">
-        Pink Dashboard Edition v3.0 | ระบบทำงานแบบ Single-Screen ไม่ต้องเลื่อน
-    </footer>
 
     <script>
         const video = document.getElementById('webcam');
@@ -231,13 +241,24 @@
         const noImage = document.getElementById('noImage');
         const flash = document.getElementById('flash');
         
+        const brightnessInput = document.getElementById('brightness');
+        const contrastInput = document.getElementById('contrast');
+
         let activeBgColor = '#003399';
         let isCaptured = false;
-        let aiLoaded = false;
 
-        // UI Event Listeners
-        document.getElementById('brightness').oninput = (e) => document.getElementById('val-bright').innerText = e.target.value + '%';
-        document.getElementById('contrast').oninput = (e) => document.getElementById('val-contrast').innerText = e.target.value + '%';
+        // --- Real-time Filter Update ---
+        const updateFilters = () => {
+            const b = brightnessInput.value;
+            const c = contrastInput.value;
+            document.getElementById('val-bright').innerText = b + '%';
+            document.getElementById('val-contrast').innerText = c + '%';
+            // Apply filter to live canvas
+            canvas.style.filter = `brightness(${b}%) contrast(${c}%)`;
+        };
+
+        brightnessInput.oninput = updateFilters;
+        contrastInput.oninput = updateFilters;
 
         window.changeBg = (color, el) => {
             activeBgColor = color;
@@ -245,7 +266,7 @@
             el.classList.add('btn-active');
         };
 
-        // --- AI Model ---
+        // --- AI Setup ---
         const selfieSegmentation = new SelfieSegmentation({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
         });
@@ -273,15 +294,16 @@
             }
             ctx.restore();
 
-            if (!aiLoaded) {
-                aiLoaded = true;
-                document.getElementById('cameraStatus').innerHTML = '<i class="fas fa-check-circle mr-1 text-green-500"></i> AI พร้อมแล้วค่ะ';
-                document.getElementById('cameraStatus').className = 'text-[10px] font-bold px-3 py-1.5 bg-green-50 text-green-600 rounded-full border border-green-100';
+            // Status Update Once
+            const status = document.getElementById('cameraStatus');
+            if (status.innerText.includes('เตรียม')) {
+                status.innerHTML = '<i class="fas fa-check mr-1 text-green-500"></i> AI พร้อมแล้ว';
+                status.className = 'text-[9px] font-bold px-3 py-1 bg-green-50 text-green-600 rounded-full border border-green-100';
             }
         });
 
-        // --- Init Camera ---
-        async function startSystem() {
+        // --- Camera Control ---
+        async function init() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: { ideal: 1280 }, height: { ideal: 720 } } 
@@ -297,11 +319,11 @@
                     loop();
                 };
             } catch (err) {
-                Swal.fire({icon:'error', title:'กล้องขัดข้อง', text:'กรุณาเปิดสิทธิ์เข้าถึงกล้องและรีโหลดหน้าเว็บใหม่ครับ'});
+                Swal.fire('กล้องขัดข้อง', 'กรุณาอนุญาตกล้องครับ', 'error');
             }
         }
 
-        // --- Snap ---
+        // --- Snap Logic ---
         snapBtn.onclick = () => {
             flash.classList.add('animate-flash');
             setTimeout(() => flash.classList.remove('animate-flash'), 300);
@@ -318,10 +340,8 @@
             finalCanvas.height = 800;
             const fCtx = finalCanvas.getContext('2d');
             
-            const bright = document.getElementById('brightness').value;
-            const contrast = document.getElementById('contrast').value;
-            fCtx.filter = `brightness(${bright}%) contrast(${contrast}%)`;
-            
+            // ดึงค่า filter จาก canvas หลักมาใส่รูปสุดท้าย
+            fCtx.filter = canvas.style.filter || 'none';
             fCtx.drawImage(canvas, x, 0, w, h, 0, 0, 600, 800);
 
             imageResult.src = finalCanvas.toDataURL('image/jpeg', 0.95);
@@ -342,6 +362,7 @@
             downloadBtn.disabled = true;
         };
 
+        // --- Download ---
         downloadBtn.onclick = () => {
             const size = document.getElementById('photoSize').value;
             const exportCanvas = document.createElement('canvas');
@@ -357,21 +378,17 @@
             eCtx.drawImage(imageResult, 0, 0, dw, dh);
 
             const link = document.createElement('a');
-            link.download = `photo-${size}-inch.jpg`;
+            link.download = `id-photo-${size}-inch.jpg`;
             link.href = exportCanvas.toDataURL('image/jpeg', 1.0);
             link.click();
             
             Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'ดาวน์โหลดรูปชมพูเรียบร้อย!',
-                showConfirmButton: false,
-                timer: 1500
+                toast: true, position: 'top-end', icon: 'success',
+                title: 'บันทึกรูปเรียบร้อย!', showConfirmButton: false, timer: 1500
             });
         };
 
-        window.onload = startSystem;
+        window.onload = init;
     </script>
 </body>
 </html>
