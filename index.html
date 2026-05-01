@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Meta tags สำหรับการแสดงผลเมื่อแชร์ลิงก์ (แนะนำให้มีเมื่อลง GitHub) -->
+    <meta name="description" content="ระบบถ่ายรูปติดบัตรผู้พิการออนไลน์ด้วย AI พร้อมระบบลบพื้นหลังอัตโนมัติ">
     <title>ระบบถ่ายรูปติดบัตร AI - Pink Compact Edition</title>
+    
+    <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     
-    <!-- MediaPipe Selfie Segmentation -->
+    <!-- MediaPipe Selfie Segmentation สำหรับระบบ AI ลบพื้นหลัง -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
 
     <style>
@@ -17,7 +21,7 @@
             font-family: 'Kanit', sans-serif;
             background-color: #fff1f2;
             height: 100vh;
-            overflow: hidden; /* ล็อกหน้าจอถาวร */
+            overflow: hidden; /* ล็อกหน้าจอถาวรเพื่อให้พอดีกับ Viewport */
             display: flex;
             flex-direction: column;
             padding: 10px;
@@ -39,7 +43,7 @@
         .video-wrapper {
             position: relative;
             width: 100%;
-            padding-top: 133.33%; /* 3:4 Aspect Ratio */
+            padding-top: 133.33%; /* สัดส่วน 3:4 */
             background: #2d1a24;
             border-radius: 0.75rem;
             overflow: hidden;
@@ -51,7 +55,6 @@
         }
         #outputCanvas {
             width: 100%; height: 100%; object-fit: cover;
-            /* Filter will be applied via JS */
         }
         .face-guide {
             position: absolute;
@@ -84,13 +87,14 @@
         }
         #webcam { display: none; }
         
+        /* Effect ตอนกดถ่ายรูป */
         #flash {
             position: absolute; inset: 0; background: white; opacity: 0; pointer-events: none; z-index: 50;
         }
         .animate-flash { animation: flash-anim 0.3s ease-out; }
         @keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* Compact Sliders */
+        /* การปรับแต่ง Slider ให้เป็นธีมชมพู */
         input[type=range] {
             height: 6px;
             -webkit-appearance: none;
@@ -117,7 +121,7 @@
 </head>
 <body>
 
-    <!-- Compact Header -->
+    <!-- Header ส่วนหัวของระบบ -->
     <header class="flex justify-between items-center bg-white p-2 mb-2 rounded-xl shadow-sm border border-pink-100">
         <div class="flex items-center space-x-3">
             <div class="w-8 h-8 pink-gradient rounded-lg flex items-center justify-center text-white">
@@ -130,10 +134,10 @@
         </div>
     </header>
 
-    <!-- Main Grid - All on one screen -->
+    <!-- หน้าจอหลักแบ่งเป็น 3 คอลัมน์ -->
     <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 min-h-0">
         
-        <!-- Column 1: Camera -->
+        <!-- คอลัมน์ที่ 1: กล้องถ่ายรูปสด -->
         <section class="panel-card">
             <h2 class="section-title"><i class="fas fa-video mr-2"></i> 1. กล้อง</h2>
             <div class="video-wrapper">
@@ -154,12 +158,12 @@
             </div>
         </section>
 
-        <!-- Column 2: Adjustment & Size (MOVED SIZE HERE) -->
+        <!-- คอลัมน์ที่ 2: การปรับแต่งพื้นหลัง แสง และขนาดรูป -->
         <section class="panel-card">
             <h2 class="section-title"><i class="fas fa-sliders-h mr-2"></i> 2. ปรับแต่ง & ขนาด</h2>
             <div class="flex-1 overflow-y-auto space-y-4 pr-1">
                 
-                <!-- Background -->
+                <!-- เลือกสีพื้นหลัง -->
                 <div>
                     <label class="text-[9px] font-bold text-gray-400 mb-2 block uppercase">สีพื้นหลัง</label>
                     <div id="bgOptions" class="grid grid-cols-5 gap-1.5">
@@ -173,7 +177,7 @@
                     </div>
                 </div>
 
-                <!-- Brightness/Contrast -->
+                <!-- ตัวปรับความสว่างและ Contrast (แสดงผล Real-time) -->
                 <div class="space-y-3 pt-2">
                     <div>
                         <div class="flex justify-between mb-1">
@@ -191,7 +195,7 @@
                     </div>
                 </div>
 
-                <!-- PHOTO SIZE (MOVED FROM COL 3) -->
+                <!-- เลือกขนาดนิ้วที่จะ Export -->
                 <div class="pt-2">
                     <label class="text-[9px] font-bold text-gray-400 mb-2 block uppercase">เลือกขนาดรูปที่จะบันทึก</label>
                     <select id="photoSize" class="w-full p-2 bg-pink-50 border border-pink-100 rounded-lg text-[11px] font-medium text-pink-700 outline-none">
@@ -209,7 +213,7 @@
             </div>
         </section>
 
-        <!-- Column 3: Result -->
+        <!-- คอลัมน์ที่ 3: แสดงผลลัพธ์และปุ่มดาวน์โหลด -->
         <section class="panel-card">
             <h2 class="section-title"><i class="fas fa-check-circle mr-2"></i> 3. ผลลัพธ์</h2>
             <div class="flex-1 flex flex-col min-h-0">
@@ -247,13 +251,12 @@
         let activeBgColor = '#003399';
         let isCaptured = false;
 
-        // --- Real-time Filter Update ---
+        // ฟังก์ชันอัปเดตฟิลเตอร์กล้องสด
         const updateFilters = () => {
             const b = brightnessInput.value;
             const c = contrastInput.value;
             document.getElementById('val-bright').innerText = b + '%';
             document.getElementById('val-contrast').innerText = c + '%';
-            // Apply filter to live canvas
             canvas.style.filter = `brightness(${b}%) contrast(${c}%)`;
         };
 
@@ -266,7 +269,7 @@
             el.classList.add('btn-active');
         };
 
-        // --- AI Setup ---
+        // ตั้งค่า AI สำหรับแยกบุคคลออกจากพื้นหลัง
         const selfieSegmentation = new SelfieSegmentation({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
         });
@@ -279,12 +282,12 @@
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Person
+            // วาดคน
             ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
             ctx.globalCompositeOperation = 'source-in';
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
-            // Background
+            // วาดพื้นหลัง
             ctx.globalCompositeOperation = 'destination-over';
             if (activeBgColor !== 'none') {
                 ctx.fillStyle = activeBgColor;
@@ -294,7 +297,7 @@
             }
             ctx.restore();
 
-            // Status Update Once
+            // อัปเดตสถานะ AI
             const status = document.getElementById('cameraStatus');
             if (status.innerText.includes('เตรียม')) {
                 status.innerHTML = '<i class="fas fa-check mr-1 text-green-500"></i> AI พร้อมแล้ว';
@@ -302,7 +305,7 @@
             }
         });
 
-        // --- Camera Control ---
+        // เริ่มต้นการใช้งานกล้อง
         async function init() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -319,11 +322,11 @@
                     loop();
                 };
             } catch (err) {
-                Swal.fire('กล้องขัดข้อง', 'กรุณาอนุญาตกล้องครับ', 'error');
+                Swal.fire('กล้องขัดข้อง', 'กรุณาอนุญาตให้เข้าถึงกล้องเพื่อใช้งานระบบครับ', 'error');
             }
         }
 
-        // --- Snap Logic ---
+        // ระบบถ่ายรูป
         snapBtn.onclick = () => {
             flash.classList.add('animate-flash');
             setTimeout(() => flash.classList.remove('animate-flash'), 300);
@@ -340,7 +343,6 @@
             finalCanvas.height = 800;
             const fCtx = finalCanvas.getContext('2d');
             
-            // ดึงค่า filter จาก canvas หลักมาใส่รูปสุดท้าย
             fCtx.filter = canvas.style.filter || 'none';
             fCtx.drawImage(canvas, x, 0, w, h, 0, 0, 600, 800);
 
@@ -362,7 +364,7 @@
             downloadBtn.disabled = true;
         };
 
-        // --- Download ---
+        // ระบบดาวน์โหลดรูปภาพตามขนาดที่เลือก
         downloadBtn.onclick = () => {
             const size = document.getElementById('photoSize').value;
             const exportCanvas = document.createElement('canvas');
