@@ -1,396 +1,1204 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Meta tags สำหรับการแสดงผลเมื่อแชร์ลิงก์ (แนะนำให้มีเมื่อลง GitHub) -->
-    <meta name="description" content="ระบบถ่ายรูปติดบัตรผู้พิการออนไลน์ด้วย AI พร้อมระบบลบพื้นหลังอัตโนมัติ">
-    <title>ระบบถ่ายรูปติดบัตร AI - Pink Compact Edition</title>
-    
-    <!-- External Libraries -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- MediaPipe Selfie Segmentation สำหรับระบบ AI ลบพื้นหลัง -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Photo Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" sizes="16x16" href="https://img2.pic.in.th/.3b3f4daf7499acfd.png">   
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <style>
-        body {
-            font-family: 'Kanit', sans-serif;
-            background-color: #fff1f2;
-            height: 100vh;
-            overflow: hidden; /* ล็อกหน้าจอถาวรเพื่อให้พอดีกับ Viewport */
-            display: flex;
-            flex-direction: column;
-            padding: 10px;
-        }
-        .pink-gradient {
-            background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
-        }
-        .panel-card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 2px 10px -3px rgba(236, 72, 153, 0.15);
-            border: 1px solid #fce7f3;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-            padding: 12px;
-        }
-        .video-wrapper {
-            position: relative;
-            width: 100%;
-            padding-top: 133.33%; /* สัดส่วน 3:4 */
-            background: #2d1a24;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-        .video-content {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-        }
-        #outputCanvas {
-            width: 100%; height: 100%; object-fit: cover;
-        }
-        .face-guide {
-            position: absolute;
-            top: 45%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 50%; height: 55%;
-            border: 2px dashed rgba(244, 114, 182, 0.5);
-            border-radius: 50% 50% 45% 45%;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .preview-box {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #fff5f7;
-            border-radius: 0.75rem;
-            border: 2px dashed #f9a8d4;
-            overflow: hidden;
-            position: relative;
-        }
-        #imageResult {
-            max-width: 100%; max-height: 100%; object-fit: contain;
-        }
-        .btn-active {
-            outline: 3px solid #ec4899;
-            transform: scale(1.02);
-        }
-        #webcam { display: none; }
-        
-        /* Effect ตอนกดถ่ายรูป */
-        #flash {
-            position: absolute; inset: 0; background: white; opacity: 0; pointer-events: none; z-index: 50;
-        }
-        .animate-flash { animation: flash-anim 0.3s ease-out; }
-        @keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
+  :root {
+    --pink-50: #fff0f6;
+    --pink-100: #ffd6e7;
+    --pink-200: #ffadd2;
+    --pink-300: #ff85c2;
+    --pink-400: #f06090;
+    --pink-500: #eb2f76;
+    --pink-600: #c41d5f;
+    --pink-700: #9e1252;
+    --accent: #f06090;
+    --accent-light: #ffd6e7;
+    --accent-dark: #c41d5f;
+    --bg-primary: #fff8fb;
+    --bg-card: #ffffff;
+    --bg-surface: #fef0f5;
+    --text-primary: #2d1b22;
+    --text-secondary: #7a4e5e;
+    --text-muted: #b08090;
+    --border: #f5c8d8;
+    --border-focus: #f06090;
+    --shadow: 0 4px 24px rgba(240,96,144,0.10);
+    --shadow-lg: 0 8px 40px rgba(240,96,144,0.16);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-xs: 6px;
+  }
 
-        /* การปรับแต่ง Slider ให้เป็นธีมชมพู */
-        input[type=range] {
-            height: 6px;
-            -webkit-appearance: none;
-            background: #ffe4e6;
-            border-radius: 5px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 16px; width: 16px;
-            border-radius: 50%; background: #ec4899;
-            cursor: pointer;
-        }
+  body {
+    font-family: 'Noto Sans Thai', 'DM Sans', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image: 
+      radial-gradient(circle at 20% 10%, rgba(240,96,144,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 90%, rgba(240,96,144,0.04) 0%, transparent 50%);
+  }
 
-        .section-title {
-            font-size: 0.75rem;
-            font-weight: 800;
-            color: #ec4899;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-        }
-    </style>
+  /* Header */
+  .header {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--pink-400), var(--pink-600));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-icon svg { width: 20px; height: 20px; fill: white; }
+  .logo-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--pink-500), var(--pink-700));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header-badge {
+    font-size: 0.7rem;
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* Main Layout */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  /* Panel Cards */
+  .panel {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-icon {
+    width: 28px; height: 28px;
+    background: var(--pink-50);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .panel-icon svg { width: 15px; height: 15px; stroke: var(--accent); fill: none; stroke-width: 2; }
+  .panel-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .panel-body { padding: 1.25rem; }
+
+  /* Upload Zone */
+  .upload-zone {
+    border: 2px dashed var(--pink-200);
+    border-radius: var(--radius);
+    background: var(--pink-50);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(240,96,144,0.15);
+  }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .upload-icon {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, var(--pink-200), var(--pink-300));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    box-shadow: 0 4px 12px rgba(240,96,144,0.25);
+  }
+  .upload-icon svg { width: 26px; height: 26px; stroke: white; fill: none; stroke-width: 1.8; }
+  .upload-text { font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+  .upload-hint { font-size: 0.78rem; color: var(--text-muted); }
+
+  /* Canvas Area */
+  .canvas-wrapper {
+    background: #f8f8f8;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    position: relative;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .canvas-placeholder {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: 2rem;
+  }
+  canvas {
+    max-width: 100%;
+    display: block;
+    border-radius: var(--radius-xs);
+  }
+
+  /* Section Label */
+  .section-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.6rem;
+    margin-top: 1.1rem;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* Slider Controls */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0.6rem;
+  }
+  .slider-label {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .slider-wrap {
+    flex: 1;
+    position: relative;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--pink-100);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink-400), var(--pink-600));
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(240,96,144,0.35);
+    transition: transform 0.1s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink-400), var(--pink-600));
+    border: none;
+    cursor: pointer;
+  }
+  .slider-val {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent);
+    width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Color Picker */
+  .color-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .color-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.18s;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    flex-shrink: 0;
+  }
+  .color-btn:hover { transform: scale(1.12); }
+  .color-btn.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px white, 0 0 0 4px var(--accent);
+  }
+  .color-btn[data-bg="blue"] { background: #1565c0; }
+  .color-btn[data-bg="lightblue"] { background: #29b6f6; }
+  .color-btn[data-bg="pink"] { background: #e91e63; }
+  .color-btn[data-bg="original"] {
+    background: conic-gradient(#f44 0%, #4f4 25%, #44f 50%, #ff4 75%, #f44 100%);
+  }
+  .color-btn[data-bg="white"] { background: #ffffff; border-color: var(--border); }
+  .color-btn[data-bg="gray"] { background: #9e9e9e; }
+
+  /* Color Label */
+  .color-label-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .color-label {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    border: none;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+  }
+  .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--pink-400), var(--pink-600));
+    color: white;
+    box-shadow: 0 4px 14px rgba(240,96,144,0.35);
+    width: 100%;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(240,96,144,0.45);
+  }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    background: var(--pink-50);
+    color: var(--accent-dark);
+    border: 1px solid var(--pink-200);
+    width: 100%;
+  }
+  .btn-secondary:hover { background: var(--pink-100); }
+  .btn-outline {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { background: var(--bg-surface); }
+  .btn-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Processing overlay */
+  .processing-overlay {
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.88);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    border-radius: var(--radius-sm);
+    z-index: 10;
+  }
+  .processing-overlay.show { display: flex; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--pink-100);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .processing-text { font-size: 0.875rem; color: var(--text-secondary); font-weight: 500; }
+
+  /* Steps indicator */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.25rem;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+  .step-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--pink-100);
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .step.active .step-dot { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(240,96,144,0.4); }
+  .step.done .step-dot { background: #22c55e; color: white; }
+  .step-line {
+    flex: 1;
+    height: 2px;
+    background: var(--pink-100);
+    margin: 0 4px;
+    transition: background 0.3s;
+  }
+  .step.done + .step .step-line, .step.done .step-line { background: #22c55e; }
+  .step-label { font-size: 0.68rem; color: var(--text-muted); text-align: center; margin-top: 4px; white-space: nowrap; }
+
+  /* Result Image */
+  .result-canvas-wrap {
+    background: repeating-conic-gradient(#e0e0e0 0% 25%, #f5f5f5 0% 50%) 0 0 / 16px 16px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    position: relative;
+    min-height: 200px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .result-placeholder { font-size: 0.82rem; color: var(--text-muted); text-align: center; padding: 2rem; }
+
+  /* Download buttons row */
+  .download-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 0.75rem;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .container { padding: 1rem 0.75rem 2rem; }
+    .header { padding: 0 1rem; }
+    .logo-text { font-size: 1rem; }
+    .color-options { gap: 6px; }
+    .color-btn { width: 36px; height: 36px; }
+    .color-label { width: 36px; font-size: 0.62rem; }
+  }
+  @media (max-width: 480px) {
+    .header-badge { display: none; }
+    .steps { overflow-x: auto; }
+    .panel-body { padding: 1rem; }
+  }
+
+  /* SweetAlert2 custom */
+  .swal2-popup {
+    font-family: 'Noto Sans Thai', 'DM Sans', sans-serif !important;
+    border-radius: 20px !important;
+  }
+  .swal2-confirm {
+    background: linear-gradient(135deg, var(--pink-400), var(--pink-600)) !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+  }
+  .swal2-cancel {
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+  }
+  .swal2-title { color: var(--text-primary) !important; }
+</style>
 </head>
 <body>
 
-    <!-- Header ส่วนหัวของระบบ -->
-    <header class="flex justify-between items-center bg-white p-2 mb-2 rounded-xl shadow-sm border border-pink-100">
-        <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 pink-gradient rounded-lg flex items-center justify-center text-white">
-                <i class="fas fa-camera text-sm"></i>
-            </div>
-            <h1 class="font-bold text-gray-800 text-sm">ระบบถ่ายรูป AI ติดบัตร</h1>
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <span class="logo-text">ID Photo Studio</span>
+  </div>
+  <span class="header-badge">✨ AI Background Remover</span>
+</header>
+
+<div class="container">
+  <!-- Steps -->
+  <div style="max-width:520px;margin:0 auto 1.5rem">
+    <div class="steps" id="stepsRow">
+      <div class="step active" id="step1">
+        <div class="step-dot">1</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" id="step2">
+        <div class="step-dot">2</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" id="step3">
+        <div class="step-dot">3</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:0;justify-content:space-between;margin-top:4px">
+      <span class="step-label" style="flex:1;text-align:left">ปรับแต่ง</span>
+      <span class="step-label" style="flex:1;text-align:center">อัปโหลด</span>
+      <span class="step-label" style="flex:1;text-align:right">ดาวน์โหลด</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Left: Controls + Upload -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+      <!-- Step 1: Adjust BEFORE upload -->
+      <div class="panel" id="adjustPanel">
+        <div class="panel-header">
+          <div class="panel-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M5.34 18.66l-1.41 1.41M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M5.34 5.34 3.93 3.93M12 20v2M12 2v2"/></svg>
+          </div>
+          <span class="panel-title">ขั้นตอนที่ 1 — ปรับแต่งภาพก่อนอัปโหลด</span>
         </div>
-        <div id="cameraStatus" class="text-[9px] font-bold px-3 py-1 bg-pink-50 text-pink-600 rounded-full border border-pink-100">
-            <i class="fas fa-spinner fa-spin mr-1"></i> เตรียมระบบ...
+        <div class="panel-body">
+          <div class="section-label">ความสว่าง & ความคมชัด</div>
+
+          <div class="slider-row">
+            <span class="slider-label">ความสว่าง</span>
+            <div class="slider-wrap">
+              <input type="range" min="-100" max="100" value="0" id="brightnessSlider">
+            </div>
+            <span class="slider-val" id="brightnessVal">0</span>
+          </div>
+
+          <div class="slider-row">
+            <span class="slider-label">ความคมชัด</span>
+            <div class="slider-wrap">
+              <input type="range" min="-100" max="100" value="0" id="contrastSlider">
+            </div>
+            <span class="slider-val" id="contrastVal">0</span>
+          </div>
+
+          <div class="slider-row">
+            <span class="slider-label">ความอิ่มตัว</span>
+            <div class="slider-wrap">
+              <input type="range" min="-100" max="100" value="0" id="saturationSlider">
+            </div>
+            <span class="slider-val" id="saturationVal">0</span>
+          </div>
+
+          <div class="section-label" style="margin-top:1rem">พื้นหลังใหม่</div>
+          <div class="color-options">
+            <button class="color-btn active" data-bg="blue" title="สีน้ำเงิน (มาตรฐาน)"></button>
+            <button class="color-btn" data-bg="lightblue" title="สีฟ้า"></button>
+            <button class="color-btn" data-bg="pink" title="สีชมพู"></button>
+            <button class="color-btn" data-bg="white" title="สีขาว"></button>
+            <button class="color-btn" data-bg="gray" title="สีเทา"></button>
+            <button class="color-btn" data-bg="original" title="พื้นหลังเดิม"></button>
+          </div>
+          <div class="color-label-row">
+            <span class="color-label">น้ำเงิน</span>
+            <span class="color-label">ฟ้า</span>
+            <span class="color-label">ชมพู</span>
+            <span class="color-label">ขาว</span>
+            <span class="color-label">เทา</span>
+            <span class="color-label">เดิม</span>
+          </div>
+
+          <div style="margin-top:1rem;padding:0.75rem;background:var(--pink-50);border-radius:var(--radius-sm);border:1px solid var(--pink-100)">
+            <p style="font-size:0.78rem;color:var(--text-muted);line-height:1.6">
+              💡 <strong style="color:var(--text-secondary)">คำแนะนำ:</strong> ปรับค่าด้านบนตามต้องการก่อน แล้วค่อยอัปโหลดภาพ ระบบจะนำการตั้งค่าไปใช้อัตโนมัติ
+            </p>
+          </div>
         </div>
-    </header>
+      </div>
 
-    <!-- หน้าจอหลักแบ่งเป็น 3 คอลัมน์ -->
-    <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 min-h-0">
-        
-        <!-- คอลัมน์ที่ 1: กล้องถ่ายรูปสด -->
-        <section class="panel-card">
-            <h2 class="section-title"><i class="fas fa-video mr-2"></i> 1. กล้อง</h2>
-            <div class="video-wrapper">
-                <div class="video-content">
-                    <div id="flash"></div>
-                    <video id="webcam" autoplay playsinline></video>
-                    <canvas id="outputCanvas"></canvas>
-                    <div class="face-guide"></div>
-                </div>
+      <!-- Step 2: Upload / Camera -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-icon">
+            <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          <span class="panel-title">ขั้นตอนที่ 2 — เพิ่มภาพ</span>
+        </div>
+        <div class="panel-body">
+          <!-- Tab switcher -->
+          <div style="display:flex;gap:6px;margin-bottom:1rem;background:var(--pink-50);border-radius:var(--radius-sm);padding:4px">
+            <button class="tab-btn tab-active" id="tabUpload" onclick="switchTab('upload')" style="flex:1;padding:0.45rem;border:none;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.18s">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+              อัปโหลดไฟล์
+            </button>
+            <button class="tab-btn" id="tabCamera" onclick="switchTab('camera')" style="flex:1;padding:0.45rem;border:none;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.18s;background:transparent;color:var(--text-muted)">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              ถ่ายจากกล้อง
+            </button>
+          </div>
+
+          <!-- Upload tab -->
+          <div id="uploadTab">
+            <div class="upload-zone" id="uploadZone">
+              <input type="file" accept="image/*" id="fileInput">
+              <div class="upload-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+              <div class="upload-text">คลิกหรือลากภาพมาวางที่นี่</div>
+              <div class="upload-hint">PNG, JPG, JPEG, WEBP — ขนาดไม่เกิน 10MB</div>
             </div>
-            <div class="mt-2">
-                <button id="snapBtn" class="w-full bg-pink-500 hover:bg-pink-600 text-white py-2.5 rounded-lg font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center">
-                    <i class="fas fa-camera mr-2"></i> ถ่ายรูปตอนนี้
-                </button>
-                <button id="retakeBtn" class="w-full bg-pink-50 hover:bg-pink-100 text-pink-600 py-2.5 rounded-lg font-bold text-xs hidden flex items-center justify-center">
-                    <i class="fas fa-redo mr-2"></i> ถ่ายใหม่
-                </button>
+          </div>
+
+          <!-- Camera tab -->
+          <div id="cameraTab" style="display:none">
+            <div style="position:relative;background:#111;border-radius:var(--radius-sm);overflow:hidden;min-height:240px;display:flex;align-items:center;justify-content:center" id="cameraContainer">
+              <video id="cameraVideo" autoplay playsinline muted style="width:100%;display:block;border-radius:var(--radius-sm)"></video>
+              <div id="cameraPlaceholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#aaa">
+                <svg viewBox="0 0 24 24" style="width:48px;height:48px;stroke:#555;fill:none;stroke-width:1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span style="font-size:0.82rem">กดปุ่มด้านล่างเพื่อเปิดกล้อง</span>
+              </div>
+              <!-- Guide overlay -->
+              <div id="cameraGuide" style="display:none;position:absolute;inset:0;pointer-events:none">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-58%);width:120px;height:160px;border:2px dashed rgba(240,96,144,0.7);border-radius:8px"></div>
+                <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.8);font-weight:500">จัดหน้าให้อยู่ในกรอบ</div>
+              </div>
             </div>
-        </section>
 
-        <!-- คอลัมน์ที่ 2: การปรับแต่งพื้นหลัง แสง และขนาดรูป -->
-        <section class="panel-card">
-            <h2 class="section-title"><i class="fas fa-sliders-h mr-2"></i> 2. ปรับแต่ง & ขนาด</h2>
-            <div class="flex-1 overflow-y-auto space-y-4 pr-1">
-                
-                <!-- เลือกสีพื้นหลัง -->
-                <div>
-                    <label class="text-[9px] font-bold text-gray-400 mb-2 block uppercase">สีพื้นหลัง</label>
-                    <div id="bgOptions" class="grid grid-cols-5 gap-1.5">
-                        <button onclick="changeBg('#003399', this)" class="aspect-square rounded-md bg-[#003399] border-2 border-white shadow-sm btn-active"></button>
-                        <button onclick="changeBg('#3399ff', this)" class="aspect-square rounded-md bg-[#3399ff] border-2 border-white shadow-sm"></button>
-                        <button onclick="changeBg('#ffffff', this)" class="aspect-square rounded-md bg-white border-2 border-gray-100 shadow-sm"></button>
-                        <button onclick="changeBg('#f9a8d4', this)" class="aspect-square rounded-md bg-[#f9a8d4] border-2 border-white shadow-sm"></button>
-                        <button onclick="changeBg('none', this)" class="aspect-square rounded-md bg-gray-50 border-2 border-white shadow-sm flex items-center justify-center text-gray-400">
-                            <i class="fas fa-image text-[10px]"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- ตัวปรับความสว่างและ Contrast (แสดงผล Real-time) -->
-                <div class="space-y-3 pt-2">
-                    <div>
-                        <div class="flex justify-between mb-1">
-                            <label class="text-[9px] font-bold text-gray-500 uppercase">ความสว่าง</label>
-                            <span id="val-bright" class="text-[9px] font-bold text-pink-500">100%</span>
-                        </div>
-                        <input type="range" id="brightness" min="50" max="150" value="100" class="w-full">
-                    </div>
-                    <div>
-                        <div class="flex justify-between mb-1">
-                            <label class="text-[9px] font-bold text-gray-500 uppercase">ความคมชัด</label>
-                            <span id="val-contrast" class="text-[9px] font-bold text-pink-500">100%</span>
-                        </div>
-                        <input type="range" id="contrast" min="50" max="150" value="100" class="w-full">
-                    </div>
-                </div>
-
-                <!-- เลือกขนาดนิ้วที่จะ Export -->
-                <div class="pt-2">
-                    <label class="text-[9px] font-bold text-gray-400 mb-2 block uppercase">เลือกขนาดรูปที่จะบันทึก</label>
-                    <select id="photoSize" class="w-full p-2 bg-pink-50 border border-pink-100 rounded-lg text-[11px] font-medium text-pink-700 outline-none">
-                        <option value="1">1 นิ้ว (2.5 x 3.5 ซม.)</option>
-                        <option value="1.5">1.5 นิ้ว (3.0 x 4.0 ซม.)</option>
-                        <option value="2">2 นิ้ว (4.0 x 5.2 ซม.)</option>
-                    </select>
-                </div>
-
-                <div class="bg-pink-50 p-2 rounded-lg border border-pink-100 mt-2">
-                    <p class="text-[9px] text-pink-600 leading-tight">
-                        <i class="fas fa-info-circle mr-1"></i> ตัวปรับแสงจะทำงานแบบเรียลไทม์ เห็นผลทันทีที่หน้าจอกล้องครับ
-                    </p>
-                </div>
+            <!-- Camera controls -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:0.75rem" id="cameraControls">
+              <button class="btn btn-outline" id="startCamBtn" onclick="startCamera()">
+                <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                เปิดกล้อง
+              </button>
+              <button class="btn btn-primary" id="captureBtn" onclick="capturePhoto()" style="opacity:0.4;pointer-events:none">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                ถ่ายภาพ
+              </button>
+              <button class="btn btn-outline" id="flipCamBtn" onclick="flipCamera()" style="opacity:0.4;pointer-events:none">
+                <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                สลับ
+              </button>
             </div>
-        </section>
+            <div id="camErrorMsg" style="display:none;margin-top:0.6rem;padding:0.6rem 0.75rem;background:#fff0f0;border:1px solid #fecaca;border-radius:var(--radius-xs);font-size:0.78rem;color:#b91c1c"></div>
+          </div>
 
-        <!-- คอลัมน์ที่ 3: แสดงผลลัพธ์และปุ่มดาวน์โหลด -->
-        <section class="panel-card">
-            <h2 class="section-title"><i class="fas fa-check-circle mr-2"></i> 3. ผลลัพธ์</h2>
-            <div class="flex-1 flex flex-col min-h-0">
-                <div class="preview-box">
-                    <div id="noImage" class="text-center text-pink-200">
-                        <i class="fas fa-image text-3xl mb-1 opacity-20"></i>
-                        <p class="text-[9px]">ภาพพรีวิว</p>
-                    </div>
-                    <img id="imageResult" class="hidden" alt="Result">
-                </div>
-                
-                <div class="mt-2">
-                    <button id="downloadBtn" disabled class="w-full bg-slate-800 hover:bg-black text-white py-2.5 rounded-lg font-bold text-xs shadow-md disabled:opacity-20 transition-all flex items-center justify-center">
-                        <i class="fas fa-download mr-2"></i> บันทึกรูป
-                    </button>
-                </div>
+          <!-- Preview with filter (shared) -->
+          <div id="previewSection" style="display:none;margin-top:1rem">
+            <div class="canvas-wrapper" id="previewWrapper">
+              <div class="processing-overlay" id="processingOverlay">
+                <div class="spinner"></div>
+                <div class="processing-text">กำลังลบพื้นหลัง...</div>
+              </div>
+              <canvas id="previewCanvas"></canvas>
             </div>
-        </section>
-    </main>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:0.75rem">
+              <button class="btn btn-outline" id="resetBtn">
+                <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                รีเซ็ต
+              </button>
+              <button class="btn btn-primary" id="processBtn">
+                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                ลบพื้นหลัง
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <script>
-        const video = document.getElementById('webcam');
-        const canvas = document.getElementById('outputCanvas');
-        const ctx = canvas.getContext('2d');
-        const snapBtn = document.getElementById('snapBtn');
-        const retakeBtn = document.getElementById('retakeBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const imageResult = document.getElementById('imageResult');
-        const noImage = document.getElementById('noImage');
-        const flash = document.getElementById('flash');
-        
-        const brightnessInput = document.getElementById('brightness');
-        const contrastInput = document.getElementById('contrast');
+    <!-- Right: Result + Download -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-icon">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <span class="panel-title">ขั้นตอนที่ 3 — ผลลัพธ์และดาวน์โหลด</span>
+        </div>
+        <div class="panel-body">
+          <div class="result-canvas-wrap" id="resultWrapper">
+            <div class="result-placeholder" id="resultPlaceholder">
+              ภาพผลลัพธ์จะปรากฏที่นี่<br>หลังจากลบพื้นหลังแล้ว
+            </div>
+            <canvas id="resultCanvas" style="display:none;max-width:100%;"></canvas>
+          </div>
 
-        let activeBgColor = '#003399';
-        let isCaptured = false;
+          <!-- Size presets -->
+          <div class="section-label" style="margin-top:1rem">ขนาดภาพสำหรับพิมพ์</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px" id="sizeButtons">
+            <button class="btn btn-outline size-btn active-size" data-w="300" data-h="400" style="font-size:0.75rem;padding:0.4rem 0.5rem">1×1.3 นิ้ว</button>
+            <button class="btn btn-outline size-btn" data-w="350" data-h="450" style="font-size:0.75rem;padding:0.4rem 0.5rem">2×2 นิ้ว</button>
+            <button class="btn btn-outline size-btn" data-w="400" data-h="600" style="font-size:0.75rem;padding:0.4rem 0.5rem">2×3 นิ้ว</button>
+          </div>
 
-        // ฟังก์ชันอัปเดตฟิลเตอร์กล้องสด
-        const updateFilters = () => {
-            const b = brightnessInput.value;
-            const c = contrastInput.value;
-            document.getElementById('val-bright').innerText = b + '%';
-            document.getElementById('val-contrast').innerText = c + '%';
-            canvas.style.filter = `brightness(${b}%) contrast(${c}%)`;
-        };
+          <div class="download-row">
+            <button class="btn btn-secondary btn-disabled" id="downloadPngBtn">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              PNG
+            </button>
+            <button class="btn btn-primary btn-disabled" id="downloadJpgBtn">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              JPG
+            </button>
+          </div>
 
-        brightnessInput.oninput = updateFilters;
-        contrastInput.oninput = updateFilters;
+          <!-- Tips -->
+          <div style="margin-top:1rem">
+            <div class="section-label">เกี่ยวกับการลบพื้นหลัง</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);line-height:1.7">
+              ✅ ทำงานในเบราว์เซอร์ ไม่อัปโหลดไปเซิร์ฟเวอร์<br>
+              ✅ ไม่จัดเก็บภาพของคุณ<br>
+              ✅ รองรับทุกแพลตฟอร์ม<br>
+              ⚡ ใช้ remove.bg API หรือตัดพื้นหลังด้วย AI
+            </div>
+          </div>
+        </div>
+      </div>
 
-        window.changeBg = (color, el) => {
-            activeBgColor = color;
-            document.querySelectorAll('#bgOptions button').forEach(b => b.classList.remove('btn-active'));
-            el.classList.add('btn-active');
-        };
+      <!-- API Key Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <span class="panel-title">ตั้งค่า remove.bg API</span>
+        </div>
+        <div class="panel-body">
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.6">
+            ใส่ API Key จาก <a href="https://www.remove.bg/api" target="_blank" style="color:var(--accent)">remove.bg</a> เพื่อใช้ AI ลบพื้นหลัง หรือใช้โหมดจำลองโดยไม่ต้องใส่ key
+          </p>
+          <div style="display:flex;gap:8px">
+            <input type="password" id="apiKeyInput" placeholder="ใส่ API Key ที่นี่..." 
+              style="flex:1;padding:0.55rem 0.85rem;border:1.5px solid var(--border);border-radius:var(--radius-xs);font-size:0.825rem;font-family:inherit;outline:none;color:var(--text-primary);background:var(--bg-primary);transition:border-color 0.2s;">
+            <button class="btn btn-outline" id="saveApiBtn" style="white-space:nowrap;padding:0.55rem 1rem">บันทึก</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:0.65rem">
+            <div id="apiStatus" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0"></div>
+            <span id="apiStatusText" style="font-size:0.75rem;color:var(--text-muted)">ยังไม่ได้ตั้งค่า API Key — ใช้โหมดจำลอง</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-        // ตั้งค่า AI สำหรับแยกบุคคลออกจากพื้นหลัง
-        const selfieSegmentation = new SelfieSegmentation({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
-        });
+<script>
+// State
+let originalImage = null;
+let resultImageData = null;
+let selectedBg = 'blue';
+let selectedSize = { w: 300, h: 400 };
+let apiKey = localStorage.getItem('removebg_key') || '';
 
-        selfieSegmentation.setOptions({ modelSelection: 1 });
+const bgColors = {
+  blue: '#1565c0',
+  lightblue: '#29b6f6',
+  pink: '#e91e63',
+  white: '#ffffff',
+  gray: '#9e9e9e',
+  original: null
+};
 
-        selfieSegmentation.onResults((results) => {
-            if (isCaptured) return;
+// DOM refs
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+const previewSection = document.getElementById('previewSection');
+const previewCanvas = document.getElementById('previewCanvas');
+const previewWrapper = document.getElementById('previewWrapper');
+const resultCanvas = document.getElementById('resultCanvas');
+const resultWrapper = document.getElementById('resultWrapper');
+const resultPlaceholder = document.getElementById('resultPlaceholder');
+const processingOverlay = document.getElementById('processingOverlay');
+const brightnessSlider = document.getElementById('brightnessSlider');
+const contrastSlider = document.getElementById('contrastSlider');
+const saturationSlider = document.getElementById('saturationSlider');
+const brightnessVal = document.getElementById('brightnessVal');
+const contrastVal = document.getElementById('contrastVal');
+const saturationVal = document.getElementById('saturationVal');
+const processBtn = document.getElementById('processBtn');
+const resetBtn = document.getElementById('resetBtn');
+const downloadPngBtn = document.getElementById('downloadPngBtn');
+const downloadJpgBtn = document.getElementById('downloadJpgBtn');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const apiStatus = document.getElementById('apiStatus');
+const apiStatusText = document.getElementById('apiStatusText');
 
-            ctx.save();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // วาดคน
-            ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
-            ctx.globalCompositeOperation = 'source-in';
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+// Init API key
+if (apiKey) {
+  apiKeyInput.value = apiKey;
+  updateApiStatus(true);
+}
 
-            // วาดพื้นหลัง
-            ctx.globalCompositeOperation = 'destination-over';
-            if (activeBgColor !== 'none') {
-                ctx.fillStyle = activeBgColor;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            } else {
-                ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-            }
-            ctx.restore();
+function updateApiStatus(hasKey) {
+  if (hasKey) {
+    apiStatus.style.background = '#22c55e';
+    apiStatusText.textContent = 'API Key ตั้งค่าแล้ว — พร้อมใช้งาน';
+    apiStatusText.style.color = '#166534';
+  } else {
+    apiStatus.style.background = '#f59e0b';
+    apiStatusText.textContent = 'ยังไม่ได้ตั้งค่า API Key — ใช้โหมดจำลอง';
+    apiStatusText.style.color = '#92400e';
+  }
+}
 
-            // อัปเดตสถานะ AI
-            const status = document.getElementById('cameraStatus');
-            if (status.innerText.includes('เตรียม')) {
-                status.innerHTML = '<i class="fas fa-check mr-1 text-green-500"></i> AI พร้อมแล้ว';
-                status.className = 'text-[9px] font-bold px-3 py-1 bg-green-50 text-green-600 rounded-full border border-green-100';
-            }
-        });
+document.getElementById('saveApiBtn').onclick = () => {
+  const val = apiKeyInput.value.trim();
+  apiKey = val;
+  if (val) {
+    localStorage.setItem('removebg_key', val);
+    updateApiStatus(true);
+    Swal.fire({ icon:'success', title:'บันทึกแล้ว!', text:'API Key ถูกบันทึกแล้ว', timer:1800, showConfirmButton:false });
+  } else {
+    localStorage.removeItem('removebg_key');
+    updateApiStatus(false);
+    Swal.fire({ icon:'info', title:'ล้างค่าแล้ว', text:'จะใช้โหมดจำลองแทน', timer:1800, showConfirmButton:false });
+  }
+};
 
-        // เริ่มต้นการใช้งานกล้อง
-        async function init() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: { ideal: 1280 }, height: { ideal: 720 } } 
-                });
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const loop = async () => {
-                        if (!isCaptured) await selfieSegmentation.send({image: video});
-                        requestAnimationFrame(loop);
-                    };
-                    loop();
-                };
-            } catch (err) {
-                Swal.fire('กล้องขัดข้อง', 'กรุณาอนุญาตให้เข้าถึงกล้องเพื่อใช้งานระบบครับ', 'error');
-            }
-        }
+// Sliders
+[brightnessSlider, contrastSlider, saturationSlider].forEach(slider => {
+  slider.addEventListener('input', () => {
+    brightnessVal.textContent = brightnessSlider.value;
+    contrastVal.textContent = contrastSlider.value;
+    saturationVal.textContent = saturationSlider.value;
+    if (originalImage) drawPreview();
+  });
+});
 
-        // ระบบถ่ายรูป
-        snapBtn.onclick = () => {
-            flash.classList.add('animate-flash');
-            setTimeout(() => flash.classList.remove('animate-flash'), 300);
+// Color buttons
+document.querySelectorAll('.color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedBg = btn.dataset.bg;
+    if (resultImageData) compositeResult(resultImageData);
+  });
+});
 
-            isCaptured = true;
+// Size buttons
+document.querySelectorAll('.size-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.size-btn').forEach(b => {
+      b.classList.remove('active-size');
+      b.style.background = '';
+      b.style.color = '';
+      b.style.borderColor = '';
+    });
+    btn.classList.add('active-size');
+    btn.style.background = 'var(--pink-50)';
+    btn.style.color = 'var(--accent-dark)';
+    btn.style.borderColor = 'var(--pink-200)';
+    selectedSize = { w: +btn.dataset.w, h: +btn.dataset.h };
+    if (resultImageData) compositeResult(resultImageData);
+  });
+});
+// Init first size button style
+document.querySelector('.size-btn.active-size').style.background = 'var(--pink-50)';
+document.querySelector('.size-btn.active-size').style.color = 'var(--accent-dark)';
+document.querySelector('.size-btn.active-size').style.borderColor = 'var(--pink-200)';
 
-            const finalCanvas = document.createElement('canvas');
-            const targetRatio = 3/4;
-            const h = canvas.height;
-            const w = h * targetRatio;
-            const x = (canvas.width - w) / 2;
+// Drag & drop
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadFile(file);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
 
-            finalCanvas.width = 600;
-            finalCanvas.height = 800;
-            const fCtx = finalCanvas.getContext('2d');
-            
-            fCtx.filter = canvas.style.filter || 'none';
-            fCtx.drawImage(canvas, x, 0, w, h, 0, 0, 600, 800);
+function loadFile(file) {
+  if (file.size > 10 * 1024 * 1024) {
+    Swal.fire({ icon:'error', title:'ไฟล์ใหญ่เกินไป', text:'กรุณาใช้ไฟล์ขนาดไม่เกิน 10MB', confirmButtonColor: '#f06090' });
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      originalImage = img;
+      resultImageData = null;
+      previewSection.style.display = 'block';
+      resultCanvas.style.display = 'none';
+      resultPlaceholder.style.display = 'block';
+      downloadPngBtn.classList.add('btn-disabled');
+      downloadJpgBtn.classList.add('btn-disabled');
+      updateSteps(2);
+      drawPreview();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 
-            imageResult.src = finalCanvas.toDataURL('image/jpeg', 0.95);
-            imageResult.classList.remove('hidden');
-            noImage.classList.add('hidden');
-            
-            snapBtn.classList.add('hidden');
-            retakeBtn.classList.remove('hidden');
-            downloadBtn.disabled = false;
-        };
+function getFilterCSS() {
+  const b = +brightnessSlider.value;
+  const c = +contrastSlider.value;
+  const s = +saturationSlider.value;
+  const brightness = 1 + b / 100;
+  const contrast = 1 + c / 100;
+  const saturate = 1 + s / 100;
+  return `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
+}
 
-        retakeBtn.onclick = () => {
-            isCaptured = false;
-            imageResult.classList.add('hidden');
-            noImage.classList.remove('hidden');
-            snapBtn.classList.remove('hidden');
-            retakeBtn.classList.add('hidden');
-            downloadBtn.disabled = true;
-        };
+function drawPreview() {
+  if (!originalImage) return;
+  const ctx = previewCanvas.getContext('2d');
+  const maxW = previewWrapper.clientWidth - 8 || 400;
+  const scale = Math.min(maxW / originalImage.width, 350 / originalImage.height, 1);
+  previewCanvas.width = originalImage.width * scale;
+  previewCanvas.height = originalImage.height * scale;
+  ctx.filter = getFilterCSS();
+  ctx.drawImage(originalImage, 0, 0, previewCanvas.width, previewCanvas.height);
+}
 
-        // ระบบดาวน์โหลดรูปภาพตามขนาดที่เลือก
-        downloadBtn.onclick = () => {
-            const size = document.getElementById('photoSize').value;
-            const exportCanvas = document.createElement('canvas');
-            let dw, dh;
-            
-            if(size == "1") { dw = 300; dh = 413; }
-            else if(size == "1.5") { dw = 354; dh = 472; }
-            else { dw = 472; dh = 614; }
+// Reset
+resetBtn.onclick = () => {
+  brightnessSlider.value = 0;
+  contrastSlider.value = 0;
+  saturationSlider.value = 0;
+  brightnessVal.textContent = '0';
+  contrastVal.textContent = '0';
+  saturationVal.textContent = '0';
+  if (originalImage) drawPreview();
+};
 
-            exportCanvas.width = dw;
-            exportCanvas.height = dh;
-            const eCtx = exportCanvas.getContext('2d');
-            eCtx.drawImage(imageResult, 0, 0, dw, dh);
+// Process (remove background)
+processBtn.onclick = async () => {
+  if (!originalImage) return;
+  processingOverlay.classList.add('show');
+  processBtn.disabled = true;
 
-            const link = document.createElement('a');
-            link.download = `id-photo-${size}-inch.jpg`;
-            link.href = exportCanvas.toDataURL('image/jpeg', 1.0);
-            link.click();
-            
-            Swal.fire({
-                toast: true, position: 'top-end', icon: 'success',
-                title: 'บันทึกรูปเรียบร้อย!', showConfirmButton: false, timer: 1500
-            });
-        };
+  try {
+    if (apiKey) {
+      await removeBackgroundAPI();
+    } else {
+      await removeBackgroundSimulated();
+    }
+  } catch (err) {
+    processingOverlay.classList.remove('show');
+    processBtn.disabled = false;
+    Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: err.message || 'ไม่สามารถลบพื้นหลังได้', confirmButtonColor: '#f06090' });
+  }
+};
 
-        window.onload = init;
-    </script>
+async function removeBackgroundAPI() {
+  // Apply filter to a temp canvas, then send to remove.bg
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = originalImage.width;
+  tmpCanvas.height = originalImage.height;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.filter = getFilterCSS();
+  tmpCtx.drawImage(originalImage, 0, 0);
+
+  tmpCanvas.toBlob(async blob => {
+    const formData = new FormData();
+    formData.append('image_file', blob, 'image.png');
+    formData.append('size', 'auto');
+
+    try {
+      const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+        method: 'POST',
+        headers: { 'X-Api-Key': apiKey },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.errors?.[0]?.title || `API Error ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const resultBlob = new Blob([arrayBuffer], { type: 'image/png' });
+      const url = URL.createObjectURL(resultBlob);
+      const img = new Image();
+      img.onload = () => {
+        resultImageData = img;
+        compositeResult(img);
+        processingOverlay.classList.remove('show');
+        processBtn.disabled = false;
+        downloadPngBtn.classList.remove('btn-disabled');
+        downloadJpgBtn.classList.remove('btn-disabled');
+        updateSteps(3);
+        Swal.fire({ icon:'success', title:'สำเร็จ!', text:'ลบพื้นหลังเรียบร้อย', timer:1800, showConfirmButton:false });
+      };
+      img.src = url;
+    } catch (err) {
+      processingOverlay.classList.remove('show');
+      processBtn.disabled = false;
+      Swal.fire({ icon:'error', title:'API Error', text: err.message, confirmButtonColor: '#f06090' });
+    }
+  }, 'image/png');
+}
+
+async function removeBackgroundSimulated() {
+  // Simulate: use canvas to do simple bg removal (chroma-style demo)
+  await new Promise(r => setTimeout(r, 1800));
+
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = originalImage.width;
+  tmpCanvas.height = originalImage.height;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.filter = getFilterCSS();
+  tmpCtx.drawImage(originalImage, 0, 0);
+
+  const imageData = tmpCtx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
+  const d = imageData.data;
+
+  // Simple edge-aware bg removal simulation: remove very light/very similar-to-corner pixels
+  const cornerR = d[0], cornerG = d[1], cornerB = d[2];
+
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i+1], b = d[i+2];
+    const diff = Math.abs(r - cornerR) + Math.abs(g - cornerG) + Math.abs(b - cornerB);
+    // Simple threshold
+    if (diff < 80) {
+      d[i+3] = Math.max(0, d[i+3] - Math.round((80 - diff) / 80 * 255));
+    }
+  }
+  tmpCtx.putImageData(imageData, 0, 0);
+
+  const img = new Image();
+  img.onload = () => {
+    resultImageData = img;
+    compositeResult(img);
+    processingOverlay.classList.remove('show');
+    processBtn.disabled = false;
+    downloadPngBtn.classList.remove('btn-disabled');
+    downloadJpgBtn.classList.remove('btn-disabled');
+    updateSteps(3);
+    Swal.fire({
+      icon: 'info',
+      title: 'โหมดจำลอง',
+      html: 'ผลลัพธ์เป็นการจำลองเท่านั้น<br>ใส่ <b>remove.bg API Key</b> เพื่อผลลัพธ์ที่แม่นยำ',
+      confirmButtonColor: '#f06090',
+      confirmButtonText: 'เข้าใจแล้ว'
+    });
+  };
+  img.src = tmpCanvas.toDataURL('image/png');
+}
+
+function compositeResult(subjectImg) {
+  const w = selectedSize.w;
+  const h = selectedSize.h;
+  resultCanvas.width = w;
+  resultCanvas.height = h;
+  const ctx = resultCanvas.getContext('2d');
+
+  // Background
+  if (selectedBg === 'original') {
+    ctx.drawImage(originalImage, 0, 0, w, h);
+    ctx.filter = getFilterCSS();
+    ctx.drawImage(originalImage, 0, 0, w, h);
+    ctx.filter = 'none';
+  } else {
+    ctx.fillStyle = bgColors[selectedBg];
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Subject (centered, fit)
+  const scale = Math.min(w / subjectImg.width, h / subjectImg.height);
+  const sw = subjectImg.width * scale;
+  const sh = subjectImg.height * scale;
+  const sx = (w - sw) / 2;
+  const sy = (h - sh) / 2;
+  ctx.drawImage(subjectImg, sx, sy, sw, sh);
+
+  resultCanvas.style.display = 'block';
+  resultPlaceholder.style.display = 'none';
+}
+
+// Download
+downloadPngBtn.onclick = () => {
+  if (resultImageData) {
+    const link = document.createElement('a');
+    link.download = 'id-photo.png';
+    link.href = resultCanvas.toDataURL('image/png');
+    link.click();
+  }
+};
+
+downloadJpgBtn.onclick = () => {
+  if (resultImageData) {
+    const link = document.createElement('a');
+    link.download = 'id-photo.jpg';
+    link.href = resultCanvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  }
+};
+
+// Steps UI
+function updateSteps(active) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active', 'done');
+    if (i < active) el.classList.add('done');
+    else if (i === active) el.classList.add('active');
+  }
+}
+
+// Focus style for api input
+apiKeyInput.addEventListener('focus', () => { apiKeyInput.style.borderColor = 'var(--accent)'; });
+apiKeyInput.addEventListener('blur', () => { apiKeyInput.style.borderColor = 'var(--border)'; });
+
+// Tab Switching
+function switchTab(tab) {
+  const uploadTab = document.getElementById('uploadTab');
+  const cameraTab = document.getElementById('cameraTab');
+  const tabUpload = document.getElementById('tabUpload');
+  const tabCamera = document.getElementById('tabCamera');
+  if (tab === 'upload') {
+    uploadTab.style.display = 'block';
+    cameraTab.style.display = 'none';
+    tabUpload.style.background = 'white';
+    tabUpload.style.color = 'var(--accent-dark)';
+    tabUpload.style.boxShadow = '0 1px 4px rgba(240,96,144,0.15)';
+    tabCamera.style.background = 'transparent';
+    tabCamera.style.color = 'var(--text-muted)';
+    tabCamera.style.boxShadow = 'none';
+    stopCamera();
+  } else {
+    uploadTab.style.display = 'none';
+    cameraTab.style.display = 'block';
+    tabCamera.style.background = 'white';
+    tabCamera.style.color = 'var(--accent-dark)';
+    tabCamera.style.boxShadow = '0 1px 4px rgba(240,96,144,0.15)';
+    tabUpload.style.background = 'transparent';
+    tabUpload.style.color = 'var(--text-muted)';
+    tabUpload.style.boxShadow = 'none';
+  }
+}
+document.getElementById('tabUpload').style.background = 'white';
+document.getElementById('tabUpload').style.color = 'var(--accent-dark)';
+document.getElementById('tabUpload').style.boxShadow = '0 1px 4px rgba(240,96,144,0.15)';
+
+// Camera
+let cameraStream = null;
+let facingMode = 'user';
+const cameraVideo = document.getElementById('cameraVideo');
+const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+const cameraGuide = document.getElementById('cameraGuide');
+const captureBtn = document.getElementById('captureBtn');
+const flipCamBtn = document.getElementById('flipCamBtn');
+const startCamBtn = document.getElementById('startCamBtn');
+const camErrorMsg = document.getElementById('camErrorMsg');
+
+async function startCamera() {
+  camErrorMsg.style.display = 'none';
+  try {
+    if (cameraStream) stopCamera();
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+      audio: false
+    });
+    cameraVideo.srcObject = cameraStream;
+    cameraPlaceholder.style.display = 'none';
+    cameraGuide.style.display = 'block';
+    captureBtn.style.opacity = '1';
+    captureBtn.style.pointerEvents = 'auto';
+    flipCamBtn.style.opacity = '1';
+    flipCamBtn.style.pointerEvents = 'auto';
+    startCamBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> ปิดกล้อง';
+    startCamBtn.onclick = stopCamera;
+  } catch (err) {
+    let msg = 'ไม่สามารถเปิดกล้องได้';
+    if (err.name === 'NotAllowedError') msg = 'กรุณาอนุญาตให้เบราว์เซอร์ใช้กล้อง แล้วลองใหม่';
+    else if (err.name === 'NotFoundError') msg = 'ไม่พบกล้องในอุปกรณ์นี้';
+    else if (err.name === 'NotReadableError') msg = 'กล้องถูกใช้งานโดยแอปอื่นอยู่';
+    camErrorMsg.textContent = 'แจ้งเตือน: ' + msg;
+    camErrorMsg.style.display = 'block';
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  cameraVideo.srcObject = null;
+  cameraPlaceholder.style.display = 'flex';
+  cameraGuide.style.display = 'none';
+  captureBtn.style.opacity = '0.4';
+  captureBtn.style.pointerEvents = 'none';
+  flipCamBtn.style.opacity = '0.4';
+  flipCamBtn.style.pointerEvents = 'none';
+  startCamBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> เปิดกล้อง';
+  startCamBtn.onclick = startCamera;
+}
+
+function flipCamera() {
+  facingMode = facingMode === 'user' ? 'environment' : 'user';
+  startCamera();
+}
+
+function capturePhoto() {
+  if (!cameraStream) return;
+  const tmp = document.createElement('canvas');
+  tmp.width = cameraVideo.videoWidth || 640;
+  tmp.height = cameraVideo.videoHeight || 480;
+  const ctx = tmp.getContext('2d');
+  if (facingMode === 'user') { ctx.translate(tmp.width, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(cameraVideo, 0, 0);
+  const img = new Image();
+  img.onload = () => {
+    originalImage = img;
+    resultImageData = null;
+    previewSection.style.display = 'block';
+    resultCanvas.style.display = 'none';
+    resultPlaceholder.style.display = 'block';
+    downloadPngBtn.classList.add('btn-disabled');
+    downloadJpgBtn.classList.add('btn-disabled');
+    updateSteps(2);
+    drawPreview();
+    stopCamera();
+    switchTab('upload');
+    Swal.fire({ icon:'success', title:'ถ่ายภาพสำเร็จ!', text:'ปรับแต่งและลบพื้นหลังได้เลย', timer:1800, showConfirmButton:false });
+  };
+  img.src = tmp.toDataURL('image/png');
+}
+</script>
 </body>
 </html>
